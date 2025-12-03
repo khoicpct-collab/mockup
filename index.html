@@ -10,6 +10,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/camanjs/4.1.2/caman.full.min.js"></script>
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- html2canvas for image export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -23,12 +27,13 @@
             min-height: 100vh;
             padding: 20px;
             color: #fff;
+            overflow-x: hidden;
         }
 
         /* HEADER với tiêu đề 3D */
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             padding: 20px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 15px;
@@ -66,22 +71,28 @@
 
         /* SIDEBAR */
         .sidebar {
-            width: 320px;
-            background: rgba(25, 25, 45, 0.8);
+            width: 350px;
+            background: rgba(25, 25, 45, 0.9);
             border-radius: 15px;
             padding: 25px;
             display: flex;
             flex-direction: column;
             gap: 25px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            overflow-y: auto;
         }
 
         .section {
-            background: rgba(40, 40, 70, 0.6);
+            background: rgba(40, 40, 70, 0.7);
             padding: 20px;
             border-radius: 12px;
             border-left: 5px solid #4ecdc4;
+            transition: transform 0.3s;
+        }
+
+        .section:hover {
+            transform: translateY(-2px);
         }
 
         .section-title {
@@ -118,7 +129,7 @@
 
         .upload-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 7px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 7px 15px rgba(102, 126, 234, 0.5);
         }
 
         .upload-btn.secondary {
@@ -126,7 +137,15 @@
         }
 
         .upload-btn.secondary:hover {
-            box-shadow: 0 7px 15px rgba(245, 87, 108, 0.4);
+            box-shadow: 0 7px 15px rgba(245, 87, 108, 0.5);
+        }
+
+        .upload-btn.save {
+            background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
+        }
+
+        .upload-btn.save:hover {
+            box-shadow: 0 7px 15px rgba(0, 176, 155, 0.5);
         }
 
         /* THUMBNAILS */
@@ -156,23 +175,189 @@
 
         .thumbnail.active {
             border-color: #ff6b6b;
-            box-shadow: 0 0 15px rgba(255, 107, 107, 0.5);
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.6);
         }
 
         /* TOOL BUTTONS */
         .tools {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
             margin-top: 15px;
         }
 
         .tool-btn {
-            padding: 12px;
-            background: rgba(60, 60, 100, 0.7);
+            padding: 12px 8px;
+            background: rgba(60, 60, 100, 0.8);
             border: none;
             color: white;
             border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+
+        .tool-btn:hover {
+            background: rgba(78, 205, 196, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .tool-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+        }
+
+        .tool-btn i {
+            font-size: 1.3em;
+        }
+
+        /* CANVAS AREA */
+        .canvas-area {
+            flex: 1;
+            background: rgba(20, 20, 35, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+        }
+
+        #main-canvas {
+            width: 100%;
+            height: 100%;
+            cursor: default;
+        }
+
+        /* ZOOM CONTROLS */
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 25px;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(78, 205, 196, 0.8);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .zoom-btn:hover {
+            background: #4ecdc4;
+            transform: scale(1.1);
+        }
+
+        .zoom-reset {
+            background: rgba(255, 107, 107, 0.8);
+        }
+
+        .zoom-reset:hover {
+            background: #ff6b6b;
+        }
+
+        .zoom-display {
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            min-width: 60px;
+            justify-content: center;
+        }
+
+        /* CANVAS INFO */
+        .canvas-info {
+            margin-top: 15px;
+            text-align: center;
+            color: #a0a0c0;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .canvas-info-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* SAVE OPTIONS */
+        .save-options {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 30, 50, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            z-index: 1000;
+            width: 400px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(78, 205, 196, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .save-options.active {
+            display: block;
+        }
+
+        .save-header {
+            color: #4ecdc4;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .format-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .format-btn {
+            padding: 15px;
+            background: rgba(60, 60, 100, 0.8);
+            border: none;
+            border-radius: 8px;
+            color: white;
             cursor: pointer;
             display: flex;
             flex-direction: column;
@@ -181,51 +366,80 @@
             transition: all 0.3s;
         }
 
-        .tool-btn:hover {
-            background: rgba(78, 205, 196, 0.8);
+        .format-btn:hover {
+            background: rgba(78, 205, 196, 0.9);
             transform: translateY(-2px);
         }
 
-        .tool-btn i {
+        .format-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .format-btn i {
             font-size: 1.5em;
         }
 
-        /* CANVAS AREA */
-        .canvas-area {
-            flex: 1;
-            background: rgba(20, 20, 35, 0.8);
-            border-radius: 15px;
-            padding: 20px;
+        .quality-slider {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .quality-label {
             display: flex;
-            flex-direction: column;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            justify-content: space-between;
+            margin-bottom: 10px;
         }
 
-        .canvas-container {
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
             flex: 1;
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
-            border: 2px dashed rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
         }
 
-        #main-canvas {
+        .modal-btn.primary {
+            background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
+            color: white;
+        }
+
+        .modal-btn.secondary {
+            background: rgba(255, 107, 107, 0.8);
+            color: white;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        /* OVERLAY */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
         }
 
-        .canvas-info {
-            margin-top: 15px;
-            text-align: center;
-            color: #a0a0c0;
-            font-size: 0.9em;
+        .overlay.active {
+            display: block;
         }
 
         /* STATUS BAR */
         .status-bar {
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.6);
             padding: 12px 25px;
             border-radius: 10px;
             margin-top: 20px;
@@ -233,6 +447,7 @@
             justify-content: space-between;
             align-items: center;
             font-size: 0.95em;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .status-item {
@@ -256,6 +471,21 @@
             }
             .title {
                 font-size: 3em;
+            }
+            .tools {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .tools {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .format-buttons {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .save-options {
+                width: 90%;
             }
         }
     </style>
@@ -294,7 +524,7 @@
                 </div>
             </div>
 
-            <!-- CÔNG CỤ -->
+            <!-- CÔNG CỤ CHỈNH SỬA -->
             <div class="section">
                 <h3 class="section-title"><i class="fas fa-tools"></i> 3. Công Cụ Chỉnh Sửa</h3>
                 <div class="tools">
@@ -322,19 +552,44 @@
                         <i class="fas fa-arrow-down"></i>
                         <span>Ra Sau</span>
                     </button>
+                    <button class="tool-btn" id="zoomInBtn" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                        <span>Zoom In</span>
+                    </button>
+                    <button class="tool-btn" id="zoomOutBtn" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                        <span>Zoom Out</span>
+                    </button>
+                    <button class="tool-btn" id="zoomResetBtn" title="Reset Zoom">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                        <span>Reset Zoom</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SAVE / EXPORT -->
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-download"></i> 4. Lưu & Xuất File</h3>
+                <button class="upload-btn save" id="saveBtn">
+                    <i class="fas fa-save"></i> Lưu & Xuất Ảnh
+                </button>
+                <div style="margin-top: 15px; color: #ccc; font-size: 0.9em;">
+                    <i class="fas fa-info-circle"></i> Hỗ trợ: PNG, JPG, PDF
                 </div>
             </div>
 
             <!-- HƯỚNG DẪN -->
             <div class="section">
                 <h3 class="section-title"><i class="fas fa-info-circle"></i> Hướng Dẫn Nhanh</h3>
-                <ul style="color: #ccc; padding-left: 20px; line-height: 1.6;">
-                    <li>Upload ảnh mockup trước</li>
-                    <li>Upload ảnh vật liệu (nhiều ảnh)</li>
-                    <li>Kéo thumbnail vào canvas</li>
-                    <li>Chọn ảnh → Transform (Ctrl+T)</li>
-                    <li>Nhấn "Fit Bề Mặt" để tự căn chỉnh</li>
-                    <li>Nhấn "Cân Màu" để đồng bộ màu sắc</li>
+                <ul style="color: #ccc; padding-left: 20px; line-height: 1.6; font-size: 0.95em;">
+                    <li><strong>1.</strong> Upload ảnh mockup trước</li>
+                    <li><strong>2.</strong> Upload ảnh vật liệu (nhiều ảnh)</li>
+                    <li><strong>3.</strong> Kéo thumbnail vào canvas</li>
+                    <li><strong>4.</strong> Chọn ảnh → Transform (Ctrl+T)</li>
+                    <li><strong>5.</strong> Dùng Zoom để xem chi tiết</li>
+                    <li><strong>6.</strong> Nhấn "Fit Bề Mặt" để tự căn</li>
+                    <li><strong>7.</strong> Nhấn "Cân Màu" để đồng bộ</li>
+                    <li><strong>8.</strong> Lưu file PNG/JPG/PDF</li>
                 </ul>
             </div>
         </div>
@@ -343,24 +598,101 @@
         <div class="canvas-area">
             <div class="canvas-container">
                 <canvas id="main-canvas"></canvas>
+                <!-- ZOOM CONTROLS -->
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoomOutCanvas" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <div class="zoom-display" id="zoomLevel">100%</div>
+                    <button class="zoom-btn" id="zoomInCanvas" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <button class="zoom-btn zoom-reset" id="zoomResetCanvas" title="Reset Zoom">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                </div>
             </div>
             <div class="canvas-info">
-                <i class="fas fa-mouse-pointer"></i> Kéo thả ảnh vật liệu từ sidebar vào đây | 
-                <i class="fas fa-arrows-alt"></i> Kéo để di chuyển | 
-                <i class="fas fa-search"></i> Scroll để zoom
+                <div class="canvas-info-item">
+                    <i class="fas fa-mouse-pointer"></i>
+                    <span>Kéo thả ảnh từ sidebar</span>
+                </div>
+                <div class="canvas-info-item">
+                    <i class="fas fa-arrows-alt"></i>
+                    <span>Kéo để di chuyển</span>
+                </div>
+                <div class="canvas-info-item">
+                    <i class="fas fa-search"></i>
+                    <span>Scroll để zoom</span>
+                </div>
+                <div class="canvas-info-item">
+                    <i class="fas fa-save"></i>
+                    <span>Ctrl+S để lưu</span>
+                </div>
             </div>
+        </div>
+    </div>
+
+    <!-- SAVE MODAL -->
+    <div class="overlay" id="saveOverlay"></div>
+    <div class="save-options" id="saveModal">
+        <h3 class="save-header">
+            <i class="fas fa-download"></i> Xuất File
+        </h3>
+        
+        <div class="format-buttons">
+            <button class="format-btn active" data-format="png">
+                <i class="fas fa-file-image"></i>
+                <span>PNG</span>
+                <small>Chất lượng cao</small>
+            </button>
+            <button class="format-btn" data-format="jpg">
+                <i class="fas fa-file-image"></i>
+                <span>JPG</span>
+                <small>Kích thước nhỏ</small>
+            </button>
+            <button class="format-btn" data-format="pdf">
+                <i class="fas fa-file-pdf"></i>
+                <span>PDF</span>
+                <small>In ấn</small>
+            </button>
+        </div>
+
+        <div class="quality-label">
+            <span>Chất lượng:</span>
+            <span id="qualityValue">90%</span>
+        </div>
+        <input type="range" min="10" max="100" value="90" class="quality-slider" id="qualitySlider">
+
+        <div class="quality-label">
+            <span>Tên file:</span>
+        </div>
+        <input type="text" id="fileName" value="mockup-k-output" 
+               style="width:100%; padding:10px; border-radius:8px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; margin-bottom:15px;">
+
+        <div class="modal-buttons">
+            <button class="modal-btn secondary" id="cancelSave">
+                <i class="fas fa-times"></i> Hủy
+            </button>
+            <button class="modal-btn primary" id="confirmSave">
+                <i class="fas fa-download"></i> Tải Xuống
+            </button>
         </div>
     </div>
 
     <!-- STATUS BAR -->
     <div class="status-bar">
         <div class="status-item">
-            <i class="fas fa-image"></i>
+            <i class="fas fa-info-circle"></i>
             <span id="statusText">Sẵn sàng - Kéo thả ảnh để bắt đầu</span>
         </div>
         <div class="status-item">
             <i class="fas fa-object-group"></i>
-            <span>Đối tượng đang chọn: <span id="selectedObj">Không có</span></span>
+            <span>Đối tượng: <span id="selectedObj">Không có</span></span>
+        </div>
+        <div class="status-item">
+            <i class="fas fa-expand-arrows-alt"></i>
+            <span>Zoom: <span id="zoomStatus">100%</span></span>
         </div>
     </div>
 
@@ -372,6 +704,12 @@
             selection: true,
             selectionKey: 'shiftKey'
         });
+
+        // ========== ZOOM FUNCTIONALITY ==========
+        let zoomLevel = 1;
+        const ZOOM_STEP = 0.2;
+        const MIN_ZOOM = 0.1;
+        const MAX_ZOOM = 5;
 
         // Thiết lập kích thước canvas
         function resizeCanvas() {
@@ -385,8 +723,70 @@
 
         // ========== BIẾN TOÀN CỤC ==========
         let mockupImage = null;
-        let textures = []; // Mảng chứa ảnh vật liệu
+        let textures = [];
         let activeTextureIndex = -1;
+        let currentFormat = 'png';
+        let currentQuality = 0.9;
+
+        // ========== CẬP NHẬT TRẠNG THÁI ==========
+        function updateStatus(message) {
+            document.getElementById('statusText').textContent = message;
+            console.log('Status:', message);
+        }
+
+        // ========== ZOOM FUNCTIONS ==========
+        function updateZoomDisplay() {
+            const percent = Math.round(zoomLevel * 100);
+            document.getElementById('zoomLevel').textContent = percent + '%';
+            document.getElementById('zoomStatus').textContent = percent + '%';
+            
+            // Cập nhật viewport transform
+            canvas.setZoom(zoomLevel);
+            canvas.renderAll();
+        }
+
+        function zoomIn() {
+            if (zoomLevel < MAX_ZOOM) {
+                zoomLevel += ZOOM_STEP;
+                updateZoomDisplay();
+                updateStatus(`Zoom: ${Math.round(zoomLevel * 100)}%`);
+            }
+        }
+
+        function zoomOut() {
+            if (zoomLevel > MIN_ZOOM) {
+                zoomLevel -= ZOOM_STEP;
+                updateZoomDisplay();
+                updateStatus(`Zoom: ${Math.round(zoomLevel * 100)}%`);
+            }
+        }
+
+        function resetZoom() {
+            zoomLevel = 1;
+            updateZoomDisplay();
+            updateStatus("Zoom đã reset về 100%");
+        }
+
+        // Zoom bằng scroll chuột
+        canvas.on('mouse:wheel', function(opt) {
+            opt.e.preventDefault();
+            opt.e.stopPropagation();
+            
+            const delta = opt.e.deltaY;
+            if (delta < 0) {
+                zoomIn();
+            } else {
+                zoomOut();
+            }
+        });
+
+        // Gán sự kiện cho nút zoom
+        document.getElementById('zoomInBtn').addEventListener('click', zoomIn);
+        document.getElementById('zoomOutBtn').addEventListener('click', zoomOut);
+        document.getElementById('zoomResetBtn').addEventListener('click', resetZoom);
+        document.getElementById('zoomInCanvas').addEventListener('click', zoomIn);
+        document.getElementById('zoomOutCanvas').addEventListener('click', zoomOut);
+        document.getElementById('zoomResetCanvas').addEventListener('click', resetZoom);
 
         // ========== 1. UPLOAD MOCKUP ==========
         document.getElementById('uploadMockupBtn').addEventListener('click', () => {
@@ -397,12 +797,10 @@
             if (e.target.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    // Xóa mockup cũ nếu có
                     if (mockupImage) {
                         canvas.remove(mockupImage);
                     }
                     
-                    // Thêm mockup mới
                     fabric.Image.fromURL(event.target.result, function(img) {
                         mockupImage = img;
                         mockupImage.selectable = false;
@@ -410,7 +808,6 @@
                         mockupImage.hasControls = false;
                         mockupImage.hasBorders = false;
                         
-                        // Fit vào canvas
                         const scaleX = canvas.width / img.width;
                         const scaleY = canvas.height / img.height;
                         const scale = Math.min(scaleX, scaleY) * 0.9;
@@ -432,7 +829,7 @@
             }
         });
 
-        // ========== 2. UPLOAD VẬT LIỆU (NHIỀU ẢNH) ==========
+        // ========== 2. UPLOAD VẬT LIỆU ==========
         document.getElementById('uploadTextureBtn').addEventListener('click', () => {
             document.getElementById('textureFiles').click();
         });
@@ -444,7 +841,6 @@
             files.forEach((file, index) => {
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    // Lưu texture vào mảng
                     textures.push({
                         id: Date.now() + index,
                         url: event.target.result,
@@ -452,14 +848,12 @@
                         element: null
                     });
                     
-                    // Tạo thumbnail
                     const thumbnail = document.createElement('img');
                     thumbnail.src = event.target.result;
                     thumbnail.className = 'thumbnail';
                     thumbnail.draggable = true;
                     thumbnail.dataset.index = textures.length - 1;
                     
-                    // Sự kiện click chọn texture
                     thumbnail.addEventListener('click', function() {
                         document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
                         this.classList.add('active');
@@ -467,7 +861,6 @@
                         updateStatus(`Đã chọn: ${textures[activeTextureIndex].name}`);
                     });
                     
-                    // Sự kiện kéo thả
                     thumbnail.addEventListener('dragstart', function(e) {
                         e.dataTransfer.setData('textureIndex', this.dataset.index);
                     });
@@ -475,7 +868,7 @@
                     thumbnailsContainer.appendChild(thumbnail);
                     
                     if (index === 0) {
-                        thumbnail.click(); // Tự động chọn ảnh đầu tiên
+                        thumbnail.click();
                     }
                 };
                 reader.readAsDataURL(file);
@@ -496,7 +889,6 @@
                 const texture = textures[index];
                 
                 fabric.Image.fromURL(texture.url, function(img) {
-                    // Thiết lập kích thước ban đầu
                     const maxSize = 200;
                     const scale = maxSize / Math.max(img.width, img.height);
                     
@@ -530,7 +922,6 @@
         document.getElementById('transformBtn').addEventListener('click', function() {
             const activeObj = canvas.getActiveObject();
             if (activeObj) {
-                // Đảo trạng thái controls
                 if (activeObj.hasControls) {
                     activeObj.set({
                         hasControls: false,
@@ -559,7 +950,7 @@
             }
         });
 
-        // ========== 4. FIT THEO BỀ MẶT (PERSPECTIVE ĐƠN GIẢN) ==========
+        // ========== 4. FIT THEO BỀ MẶT ==========
         document.getElementById('fitSurfaceBtn').addEventListener('click', function() {
             const activeObj = canvas.getActiveObject();
             if (!activeObj) {
@@ -572,7 +963,6 @@
                 return;
             }
             
-            // Giả lập warp/perspective bằng skew và scale
             activeObj.set({
                 scaleX: activeObj.scaleX * 0.9,
                 scaleY: activeObj.scaleY * 0.8,
@@ -581,7 +971,6 @@
                 opacity: 0.9
             });
             
-            // Đặt vị trí gần giữa mockup
             activeObj.set({
                 left: mockupImage.left + mockupImage.width * mockupImage.scaleX / 2 - activeObj.width * activeObj.scaleX / 2,
                 top: mockupImage.top + mockupImage.height * mockupImage.scaleY / 2 - activeObj.height * activeObj.scaleY / 2
@@ -599,17 +988,13 @@
                 return;
             }
             
-            // Lấy màu trung bình của mockup (đơn giản)
-            // Trong thực tế cần dùng CamanJS phức tạp hơn
             updateStatus('Đang cân màu với mockup...');
             
-            // Giả lập hiệu ứng cân màu
             activeObj.set({
                 opacity: 0.85,
                 filters: []
             });
             
-            // Thêm filter brightness/contrast đơn giản
             activeObj.filters.push(
                 new fabric.Image.filters.Brightness({ brightness: 0.05 }),
                 new fabric.Image.filters.Contrast({ contrast: 0.1 })
@@ -652,6 +1037,168 @@
             }
         });
 
+        // ========== SAVE/EXPORT FUNCTIONALITY ==========
+        const saveModal = document.getElementById('saveModal');
+        const saveOverlay = document.getElementById('saveOverlay');
+        const formatButtons = document.querySelectorAll('.format-btn');
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityValue = document.getElementById('qualityValue');
+        const fileNameInput = document.getElementById('fileName');
+
+        // Mở modal save
+        document.getElementById('saveBtn').addEventListener('click', function() {
+            saveModal.classList.add('active');
+            saveOverlay.classList.add('active');
+            updateStatus('Chọn định dạng để xuất file');
+        });
+
+        // Đóng modal save
+        document.getElementById('cancelSave').addEventListener('click', closeSaveModal);
+        saveOverlay.addEventListener('click', closeSaveModal);
+
+        function closeSaveModal() {
+            saveModal.classList.remove('active');
+            saveOverlay.classList.remove('active');
+        }
+
+        // Chọn định dạng
+        formatButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                formatButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFormat = this.dataset.format;
+                updateStatus(`Đã chọn định dạng: ${currentFormat.toUpperCase()}`);
+            });
+        });
+
+        // Cập nhật chất lượng
+        qualitySlider.addEventListener('input', function() {
+            currentQuality = this.value / 100;
+            qualityValue.textContent = this.value + '%';
+        });
+
+        // Xử lý lưu file
+        document.getElementById('confirmSave').addEventListener('click', async function() {
+            closeSaveModal();
+            updateStatus('Đang xuất file...');
+            
+            const fileName = fileNameInput.value || 'mockup-k-output';
+            const fullFileName = `${fileName}.${currentFormat}`;
+            
+            try {
+                if (currentFormat === 'pdf') {
+                    await exportAsPDF(fullFileName);
+                } else {
+                    await exportAsImage(fullFileName);
+                }
+                
+                updateStatus(`Đã xuất file: ${fullFileName}`);
+            } catch (error) {
+                console.error('Export error:', error);
+                updateStatus('Lỗi khi xuất file: ' + error.message);
+            }
+        });
+
+        // Xuất ảnh PNG/JPG
+        async function exportAsImage(filename) {
+            return new Promise((resolve, reject) => {
+                // Tạo canvas tạm thời với chất lượng cao
+                const tempCanvas = document.createElement('canvas');
+                const ctx = tempCanvas.getContext('2d');
+                
+                // Lấy kích thước thực của canvas
+                tempCanvas.width = canvas.width;
+                tempCanvas.height = canvas.height;
+                
+                // Vẽ background trắng nếu cần
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                
+                // Vẽ canvas Fabric.js vào canvas tạm
+                const dataURL = canvas.toDataURL({
+                    format: currentFormat,
+                    quality: currentQuality,
+                    multiplier: 2 // Độ phân giải cao
+                });
+                
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+                    
+                    // Tạo link download
+                    const link = document.createElement('a');
+                    link.download = filename;
+                    link.href = tempCanvas.toDataURL(`image/${currentFormat}`, currentQuality);
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    resolve();
+                };
+                img.onerror = reject;
+                img.src = dataURL;
+            });
+        }
+
+        // Xuất PDF
+        async function exportAsPDF(filename) {
+            return new Promise((resolve, reject) => {
+                try {
+                    // Tạo canvas tạm để chuyển đổi
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = canvas.width;
+                    tempCanvas.height = canvas.height;
+                    
+                    const ctx = tempCanvas.getContext('2d');
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                    
+                    const dataURL = canvas.toDataURL({
+                        format: 'png',
+                        quality: 1,
+                        multiplier: 1.5
+                    });
+                    
+                    const img = new Image();
+                    img.onload = function() {
+                        ctx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
+                        
+                        // Sử dụng jsPDF
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF({
+                            orientation: tempCanvas.width > tempCanvas.height ? 'landscape' : 'portrait',
+                            unit: 'px',
+                            format: [tempCanvas.width, tempCanvas.height]
+                        });
+                        
+                        pdf.addImage(
+                            tempCanvas.toDataURL('image/png'),
+                            'PNG',
+                            0,
+                            0,
+                            tempCanvas.width,
+                            tempCanvas.height
+                        );
+                        
+                        pdf.save(filename);
+                        resolve();
+                    };
+                    img.onerror = reject;
+                    img.src = dataURL;
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        // Phím tắt Ctrl+S để save
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                document.getElementById('saveBtn').click();
+            }
+        });
+
         // ========== THEO DÕI ĐỐI TƯỢNG ĐANG CHỌN ==========
         canvas.on('selection:created', updateSelectedObject);
         canvas.on('selection:updated', updateSelectedObject);
@@ -670,14 +1217,10 @@
             }
         }
 
-        // ========== CẬP NHẬT TRẠNG THÁI ==========
-        function updateStatus(message) {
-            document.getElementById('statusText').textContent = message;
-            console.log('Status:', message);
-        }
-
         // ========== KHỞI TẠO ==========
+        updateZoomDisplay();
         updateStatus('Sẵn sàng - Tải mockup và ảnh vật liệu để bắt đầu');
+        updateSelectedObject();
     </script>
 </body>
 </html>
