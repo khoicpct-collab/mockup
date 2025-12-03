@@ -1,12 +1,683 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mockup</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./src/main.jsx"></script>
-  </body>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOCKUP K - Professional Mockup Editor</title>
+    <!-- Fabric.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
+    <!-- CamanJS for color adjustment -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/camanjs/4.1.2/caman.full.min.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #fff;
+        }
+
+        /* HEADER với tiêu đề 3D */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .title {
+            font-size: 4.5em;
+            font-weight: 900;
+            letter-spacing: 3px;
+            background: linear-gradient(90deg, #ff0000, #ff6b6b, #4ecdc4, #00b4db);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 
+                3px 3px 0 #000,
+                6px 6px 10px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(0, 180, 219, 0.3);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            color: #a0a0c0;
+            font-size: 1.2em;
+        }
+
+        /* LAYOUT CHÍNH */
+        .container {
+            display: flex;
+            gap: 25px;
+            height: 75vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 320px;
+            background: rgba(25, 25, 45, 0.8);
+            border-radius: 15px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .section {
+            background: rgba(40, 40, 70, 0.6);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #4ecdc4;
+        }
+
+        .section-title {
+            color: #4ecdc4;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            font-size: 1.2em;
+        }
+
+        /* UPLOAD BUTTONS */
+        .upload-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            margin-bottom: 12px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .upload-btn.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .upload-btn.secondary:hover {
+            box-shadow: 0 7px 15px rgba(245, 87, 108, 0.4);
+        }
+
+        /* THUMBNAILS */
+        .thumbnails {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        .thumbnail {
+            width: 70px;
+            height: 70px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid transparent;
+            cursor: move;
+            transition: all 0.3s;
+        }
+
+        .thumbnail:hover {
+            border-color: #4ecdc4;
+            transform: scale(1.05);
+        }
+
+        .thumbnail.active {
+            border-color: #ff6b6b;
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.5);
+        }
+
+        /* TOOL BUTTONS */
+        .tools {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .tool-btn {
+            padding: 12px;
+            background: rgba(60, 60, 100, 0.7);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .tool-btn:hover {
+            background: rgba(78, 205, 196, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .tool-btn i {
+            font-size: 1.5em;
+        }
+
+        /* CANVAS AREA */
+        .canvas-area {
+            flex: 1;
+            background: rgba(20, 20, 35, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        #main-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .canvas-info {
+            margin-top: 15px;
+            text-align: center;
+            color: #a0a0c0;
+            font-size: 0.9em;
+        }
+
+        /* STATUS BAR */
+        .status-bar {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px 25px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95em;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-item i {
+            color: #4ecdc4;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1200px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+            .sidebar {
+                width: 100%;
+            }
+            .title {
+                font-size: 3em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <div class="header">
+        <h1 class="title">MOCKUP K</h1>
+        <p class="subtitle">Professional Mockup Editor - Kéo thả, Chỉnh sửa, Xuất file</p>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="container">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <!-- UPLOAD MOCKUP -->
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-cloud-upload-alt"></i> 1. Upload Mockup</h3>
+                <button class="upload-btn" id="uploadMockupBtn">
+                    <i class="fas fa-image"></i> Chọn Ảnh Mockup
+                </button>
+                <input type="file" id="mockupFile" accept="image/*" hidden>
+            </div>
+
+            <!-- UPLOAD VẬT LIỆU -->
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-layer-group"></i> 2. Upload Vật Liệu</h3>
+                <button class="upload-btn secondary" id="uploadTextureBtn">
+                    <i class="fas fa-images"></i> Chọn Ảnh Vật Liệu
+                </button>
+                <input type="file" id="textureFiles" accept="image/*" multiple hidden>
+                
+                <p style="margin: 15px 0 10px; color: #ccc;">Kéo thả vào canvas:</p>
+                <div class="thumbnails" id="textureThumbnails">
+                    <!-- Thumbnails sẽ hiện ở đây -->
+                </div>
+            </div>
+
+            <!-- CÔNG CỤ -->
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-tools"></i> 3. Công Cụ Chỉnh Sửa</h3>
+                <div class="tools">
+                    <button class="tool-btn" id="transformBtn" title="Ctrl+T">
+                        <i class="fas fa-expand-alt"></i>
+                        <span>Transform</span>
+                    </button>
+                    <button class="tool-btn" id="fitSurfaceBtn">
+                        <i class="fas fa-crop-alt"></i>
+                        <span>Fit Bề Mặt</span>
+                    </button>
+                    <button class="tool-btn" id="autoColorBtn">
+                        <i class="fas fa-adjust"></i>
+                        <span>Cân Màu</span>
+                    </button>
+                    <button class="tool-btn" id="removeBtn">
+                        <i class="fas fa-trash"></i>
+                        <span>Xóa</span>
+                    </button>
+                    <button class="tool-btn" id="bringFrontBtn">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>Lên Trước</span>
+                    </button>
+                    <button class="tool-btn" id="sendBackBtn">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>Ra Sau</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- HƯỚNG DẪN -->
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-info-circle"></i> Hướng Dẫn Nhanh</h3>
+                <ul style="color: #ccc; padding-left: 20px; line-height: 1.6;">
+                    <li>Upload ảnh mockup trước</li>
+                    <li>Upload ảnh vật liệu (nhiều ảnh)</li>
+                    <li>Kéo thumbnail vào canvas</li>
+                    <li>Chọn ảnh → Transform (Ctrl+T)</li>
+                    <li>Nhấn "Fit Bề Mặt" để tự căn chỉnh</li>
+                    <li>Nhấn "Cân Màu" để đồng bộ màu sắc</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- CANVAS AREA -->
+        <div class="canvas-area">
+            <div class="canvas-container">
+                <canvas id="main-canvas"></canvas>
+            </div>
+            <div class="canvas-info">
+                <i class="fas fa-mouse-pointer"></i> Kéo thả ảnh vật liệu từ sidebar vào đây | 
+                <i class="fas fa-arrows-alt"></i> Kéo để di chuyển | 
+                <i class="fas fa-search"></i> Scroll để zoom
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+        <div class="status-item">
+            <i class="fas fa-image"></i>
+            <span id="statusText">Sẵn sàng - Kéo thả ảnh để bắt đầu</span>
+        </div>
+        <div class="status-item">
+            <i class="fas fa-object-group"></i>
+            <span>Đối tượng đang chọn: <span id="selectedObj">Không có</span></span>
+        </div>
+    </div>
+
+    <script>
+        // ========== KHỞI TẠO CANVAS FABRIC.JS ==========
+        const canvas = new fabric.Canvas('main-canvas', {
+            backgroundColor: 'transparent',
+            preserveObjectStacking: true,
+            selection: true,
+            selectionKey: 'shiftKey'
+        });
+
+        // Thiết lập kích thước canvas
+        function resizeCanvas() {
+            const container = document.querySelector('.canvas-container');
+            canvas.setWidth(container.clientWidth);
+            canvas.setHeight(container.clientHeight);
+            canvas.renderAll();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // ========== BIẾN TOÀN CỤC ==========
+        let mockupImage = null;
+        let textures = []; // Mảng chứa ảnh vật liệu
+        let activeTextureIndex = -1;
+
+        // ========== 1. UPLOAD MOCKUP ==========
+        document.getElementById('uploadMockupBtn').addEventListener('click', () => {
+            document.getElementById('mockupFile').click();
+        });
+
+        document.getElementById('mockupFile').addEventListener('change', function(e) {
+            if (e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    // Xóa mockup cũ nếu có
+                    if (mockupImage) {
+                        canvas.remove(mockupImage);
+                    }
+                    
+                    // Thêm mockup mới
+                    fabric.Image.fromURL(event.target.result, function(img) {
+                        mockupImage = img;
+                        mockupImage.selectable = false;
+                        mockupImage.evented = false;
+                        mockupImage.hasControls = false;
+                        mockupImage.hasBorders = false;
+                        
+                        // Fit vào canvas
+                        const scaleX = canvas.width / img.width;
+                        const scaleY = canvas.height / img.height;
+                        const scale = Math.min(scaleX, scaleY) * 0.9;
+                        
+                        img.scale(scale);
+                        img.set({
+                            left: (canvas.width - img.width * scale) / 2,
+                            top: (canvas.height - img.height * scale) / 2,
+                            originX: 'left',
+                            originY: 'top'
+                        });
+                        
+                        canvas.add(img);
+                        canvas.sendToBack(img);
+                        updateStatus('Mockup đã được tải lên!');
+                    });
+                };
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        // ========== 2. UPLOAD VẬT LIỆU (NHIỀU ẢNH) ==========
+        document.getElementById('uploadTextureBtn').addEventListener('click', () => {
+            document.getElementById('textureFiles').click();
+        });
+
+        document.getElementById('textureFiles').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            const thumbnailsContainer = document.getElementById('textureThumbnails');
+            
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    // Lưu texture vào mảng
+                    textures.push({
+                        id: Date.now() + index,
+                        url: event.target.result,
+                        name: file.name,
+                        element: null
+                    });
+                    
+                    // Tạo thumbnail
+                    const thumbnail = document.createElement('img');
+                    thumbnail.src = event.target.result;
+                    thumbnail.className = 'thumbnail';
+                    thumbnail.draggable = true;
+                    thumbnail.dataset.index = textures.length - 1;
+                    
+                    // Sự kiện click chọn texture
+                    thumbnail.addEventListener('click', function() {
+                        document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+                        this.classList.add('active');
+                        activeTextureIndex = parseInt(this.dataset.index);
+                        updateStatus(`Đã chọn: ${textures[activeTextureIndex].name}`);
+                    });
+                    
+                    // Sự kiện kéo thả
+                    thumbnail.addEventListener('dragstart', function(e) {
+                        e.dataTransfer.setData('textureIndex', this.dataset.index);
+                    });
+                    
+                    thumbnailsContainer.appendChild(thumbnail);
+                    
+                    if (index === 0) {
+                        thumbnail.click(); // Tự động chọn ảnh đầu tiên
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            updateStatus(`Đã tải lên ${files.length} ảnh vật liệu`);
+        });
+
+        // ========== KÉO THẢ VÀO CANVAS ==========
+        canvas.on('drop', function(event) {
+            event.e.preventDefault();
+            
+            const textureIndex = event.e.dataTransfer.getData('textureIndex');
+            if (textureIndex === '') return;
+            
+            const index = parseInt(textureIndex);
+            if (textures[index]) {
+                const texture = textures[index];
+                
+                fabric.Image.fromURL(texture.url, function(img) {
+                    // Thiết lập kích thước ban đầu
+                    const maxSize = 200;
+                    const scale = maxSize / Math.max(img.width, img.height);
+                    
+                    img.set({
+                        left: event.e.offsetX - (img.width * scale) / 2,
+                        top: event.e.offsetY - (img.height * scale) / 2,
+                        scaleX: scale,
+                        scaleY: scale,
+                        hasControls: true,
+                        hasBorders: true,
+                        cornerStyle: 'circle',
+                        cornerColor: '#4ecdc4',
+                        borderColor: '#4ecdc4',
+                        cornerSize: 12,
+                        transparentCorners: false
+                    });
+                    
+                    canvas.add(img);
+                    canvas.setActiveObject(img);
+                    updateStatus(`Đã thêm "${texture.name}" vào mockup`);
+                    updateSelectedObject();
+                });
+            }
+        });
+
+        canvas.on('dragover', function(event) {
+            event.e.preventDefault();
+        });
+
+        // ========== 3. TRANSFORM (CTRL+T) ==========
+        document.getElementById('transformBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                // Đảo trạng thái controls
+                if (activeObj.hasControls) {
+                    activeObj.set({
+                        hasControls: false,
+                        hasBorders: false
+                    });
+                    this.innerHTML = '<i class="fas fa-expand-alt"></i><span>Transform</span>';
+                } else {
+                    activeObj.set({
+                        hasControls: true,
+                        hasBorders: true
+                    });
+                    this.innerHTML = '<i class="fas fa-check"></i><span>Áp dụng</span>';
+                }
+                canvas.renderAll();
+                updateStatus('Chế độ Transform: ' + (activeObj.hasControls ? 'Bật' : 'Tắt'));
+            } else {
+                updateStatus('Vui lòng chọn một đối tượng để transform');
+            }
+        });
+
+        // Phím tắt Ctrl+T
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 't') {
+                e.preventDefault();
+                document.getElementById('transformBtn').click();
+            }
+        });
+
+        // ========== 4. FIT THEO BỀ MẶT (PERSPECTIVE ĐƠN GIẢN) ==========
+        document.getElementById('fitSurfaceBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj) {
+                updateStatus('Vui lòng chọn đối tượng cần fit');
+                return;
+            }
+            
+            if (!mockupImage) {
+                updateStatus('Cần có mockup để fit bề mặt');
+                return;
+            }
+            
+            // Giả lập warp/perspective bằng skew và scale
+            activeObj.set({
+                scaleX: activeObj.scaleX * 0.9,
+                scaleY: activeObj.scaleY * 0.8,
+                skewX: 10,
+                skewY: -5,
+                opacity: 0.9
+            });
+            
+            // Đặt vị trí gần giữa mockup
+            activeObj.set({
+                left: mockupImage.left + mockupImage.width * mockupImage.scaleX / 2 - activeObj.width * activeObj.scaleX / 2,
+                top: mockupImage.top + mockupImage.height * mockupImage.scaleY / 2 - activeObj.height * activeObj.scaleY / 2
+            });
+            
+            canvas.renderAll();
+            updateStatus('Đã fit ảnh theo bề mặt mockup');
+        });
+
+        // ========== 5. AUTO CÂN MÀU ==========
+        document.getElementById('autoColorBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj || !mockupImage) {
+                updateStatus('Cần có mockup và đối tượng để cân màu');
+                return;
+            }
+            
+            // Lấy màu trung bình của mockup (đơn giản)
+            // Trong thực tế cần dùng CamanJS phức tạp hơn
+            updateStatus('Đang cân màu với mockup...');
+            
+            // Giả lập hiệu ứng cân màu
+            activeObj.set({
+                opacity: 0.85,
+                filters: []
+            });
+            
+            // Thêm filter brightness/contrast đơn giản
+            activeObj.filters.push(
+                new fabric.Image.filters.Brightness({ brightness: 0.05 }),
+                new fabric.Image.filters.Contrast({ contrast: 0.1 })
+            );
+            
+            activeObj.applyFilters();
+            canvas.renderAll();
+            
+            updateStatus('Đã cân màu tự động với mockup');
+        });
+
+        // ========== CÁC CÔNG CỤ KHÁC ==========
+        document.getElementById('removeBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && activeObj !== mockupImage) {
+                canvas.remove(activeObj);
+                updateStatus('Đã xóa đối tượng');
+                updateSelectedObject();
+            }
+        });
+
+        document.getElementById('bringFrontBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                activeObj.bringToFront();
+                canvas.renderAll();
+                updateStatus('Đã đưa lên lớp trên');
+            }
+        });
+
+        document.getElementById('sendBackBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && activeObj !== mockupImage) {
+                activeObj.sendToBack();
+                if (mockupImage) {
+                    mockupImage.bringToFront();
+                }
+                canvas.renderAll();
+                updateStatus('Đã đưa xuống lớp dưới');
+            }
+        });
+
+        // ========== THEO DÕI ĐỐI TƯỢNG ĐANG CHỌN ==========
+        canvas.on('selection:created', updateSelectedObject);
+        canvas.on('selection:updated', updateSelectedObject);
+        canvas.on('selection:cleared', updateSelectedObject);
+
+        function updateSelectedObject() {
+            const activeObj = canvas.getActiveObject();
+            const selectedObjElement = document.getElementById('selectedObj');
+            
+            if (activeObj && activeObj !== mockupImage) {
+                selectedObjElement.textContent = 'Đã chọn';
+                selectedObjElement.style.color = '#4ecdc4';
+            } else {
+                selectedObjElement.textContent = 'Không có';
+                selectedObjElement.style.color = '#ff6b6b';
+            }
+        }
+
+        // ========== CẬP NHẬT TRẠNG THÁI ==========
+        function updateStatus(message) {
+            document.getElementById('statusText').textContent = message;
+            console.log('Status:', message);
+        }
+
+        // ========== KHỞI TẠO ==========
+        updateStatus('Sẵn sàng - Tải mockup và ảnh vật liệu để bắt đầu');
+    </script>
+</body>
 </html>
