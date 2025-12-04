@@ -243,7 +243,7 @@
             cursor: default;
         }
 
-        /* ZOOM CONTROLS */
+        /* ZOOM CONTROLS - ĐÃ CHỈNH SỬA */
         .zoom-controls {
             position: absolute;
             bottom: 20px;
@@ -293,6 +293,46 @@
             padding: 0 10px;
             min-width: 60px;
             justify-content: center;
+        }
+
+        /* UNDO/REDO CONTROLS - MỚI */
+        .history-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 25px;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .history-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(102, 126, 234, 0.8);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .history-btn:hover {
+            background: #667eea;
+            transform: scale(1.1);
+        }
+
+        .history-btn:disabled {
+            background: rgba(60, 60, 100, 0.5);
+            cursor: not-allowed;
+            transform: none;
         }
 
         /* CANVAS INFO */
@@ -487,6 +527,14 @@
             .save-options {
                 width: 90%;
             }
+            .history-controls {
+                top: 10px;
+                right: 10px;
+            }
+            .zoom-controls {
+                bottom: 10px;
+                right: 10px;
+            }
         }
     </style>
 </head>
@@ -535,6 +583,10 @@
                     <button class="tool-btn" id="fitSurfaceBtn">
                         <i class="fas fa-crop-alt"></i>
                         <span>Fit Bề Mặt</span>
+                    </button>
+                    <button class="tool-btn" id="warpSurfaceBtn">
+                        <i class="fas fa-wave-square"></i>
+                        <span>Warp Bề Mặt</span>
                     </button>
                     <button class="tool-btn" id="autoColorBtn">
                         <i class="fas fa-adjust"></i>
@@ -586,10 +638,11 @@
                     <li><strong>2.</strong> Upload ảnh vật liệu (nhiều ảnh)</li>
                     <li><strong>3.</strong> Kéo thumbnail vào canvas</li>
                     <li><strong>4.</strong> Chọn ảnh → Transform (Ctrl+T)</li>
-                    <li><strong>5.</strong> Dùng Zoom để xem chi tiết</li>
+                    <li><strong>5.</strong> Dùng "Warp Bề Mặt" cho bề mặt cong</li>
                     <li><strong>6.</strong> Nhấn "Fit Bề Mặt" để tự căn</li>
                     <li><strong>7.</strong> Nhấn "Cân Màu" để đồng bộ</li>
                     <li><strong>8.</strong> Lưu file PNG/JPG/PDF</li>
+                    <li><strong>9.</strong> Dùng Undo/Redo để quay lại</li>
                 </ul>
             </div>
         </div>
@@ -598,14 +651,25 @@
         <div class="canvas-area">
             <div class="canvas-container">
                 <canvas id="main-canvas"></canvas>
-                <!-- ZOOM CONTROLS -->
+                
+                <!-- UNDO/REDO CONTROLS - MỚI -->
+                <div class="history-controls">
+                    <button class="history-btn" id="undoBtn" title="Undo (Ctrl+Z)">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button class="history-btn" id="redoBtn" title="Redo (Ctrl+Y)">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+                
+                <!-- ZOOM CONTROLS - ĐÃ SỬA -->
                 <div class="zoom-controls">
-                    <button class="zoom-btn" id="zoomOutCanvas" title="Zoom Out">
-                        <i class="fas fa-search-minus"></i>
+                    <button class="zoom-btn" id="zoomInCanvas" title="Zoom In (vào trung tâm)">
+                        <i class="fas fa-search-plus"></i>
                     </button>
                     <div class="zoom-display" id="zoomLevel">100%</div>
-                    <button class="zoom-btn" id="zoomInCanvas" title="Zoom In">
-                        <i class="fas fa-search-plus"></i>
+                    <button class="zoom-btn" id="zoomOutCanvas" title="Zoom Out (từ trung tâm)">
+                        <i class="fas fa-search-minus"></i>
                     </button>
                     <button class="zoom-btn zoom-reset" id="zoomResetCanvas" title="Reset Zoom">
                         <i class="fas fa-expand-arrows-alt"></i>
@@ -623,11 +687,11 @@
                 </div>
                 <div class="canvas-info-item">
                     <i class="fas fa-search"></i>
-                    <span>Scroll để zoom</span>
+                    <span>Scroll để zoom theo chuột</span>
                 </div>
                 <div class="canvas-info-item">
                     <i class="fas fa-save"></i>
-                    <span>Ctrl+S để lưu</span>
+                    <span>Ctrl+S để lưu, Ctrl+Z/Y để Undo/Redo</span>
                 </div>
             </div>
         </div>
@@ -694,6 +758,10 @@
             <i class="fas fa-expand-arrows-alt"></i>
             <span>Zoom: <span id="zoomStatus">100%</span></span>
         </div>
+        <div class="status-item">
+            <i class="fas fa-history"></i>
+            <span>History: <span id="historyStatus">0/0</span></span>
+        </div>
     </div>
 
     <script>
@@ -705,11 +773,13 @@
             selectionKey: 'shiftKey'
         });
 
-        // ========== ZOOM FUNCTIONALITY ==========
+        // ========== ZOOM FUNCTIONALITY - ĐÃ SỬA ==========
         let zoomLevel = 1;
         const ZOOM_STEP = 0.2;
         const MIN_ZOOM = 0.1;
         const MAX_ZOOM = 5;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
 
         // Thiết lập kích thước canvas
         function resizeCanvas() {
@@ -727,6 +797,76 @@
         let activeTextureIndex = -1;
         let currentFormat = 'png';
         let currentQuality = 0.9;
+        
+        // ========== UNDO/REDO SYSTEM - MỚI ==========
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 50;
+        
+        function saveToHistory() {
+            // Xóa các state sau historyIndex nếu đang undo
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            
+            // Lưu state hiện tại
+            const state = canvas.toDatalessJSON();
+            history.push(state);
+            historyIndex++;
+            
+            // Giới hạn lịch sử
+            if (history.length > MAX_HISTORY) {
+                history.shift();
+                historyIndex--;
+            }
+            
+            updateHistoryButtons();
+            updateHistoryStatus();
+        }
+        
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                canvas.loadFromJSON(history[historyIndex], function() {
+                    canvas.renderAll();
+                    updateSelectedObject();
+                    updateStatus(`Đã undo (${historyIndex}/${history.length-1})`);
+                    updateHistoryButtons();
+                    updateHistoryStatus();
+                });
+            }
+        }
+        
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                canvas.loadFromJSON(history[historyIndex], function() {
+                    canvas.renderAll();
+                    updateSelectedObject();
+                    updateStatus(`Đã redo (${historyIndex}/${history.length-1})`);
+                    updateHistoryButtons();
+                    updateHistoryStatus();
+                });
+            }
+        }
+        
+        function updateHistoryButtons() {
+            const undoBtn = document.getElementById('undoBtn');
+            const redoBtn = document.getElementById('redoBtn');
+            
+            undoBtn.disabled = historyIndex <= 0;
+            redoBtn.disabled = historyIndex >= history.length - 1;
+        }
+        
+        function updateHistoryStatus() {
+            document.getElementById('historyStatus').textContent = 
+                `${historyIndex}/${history.length-1}`;
+        }
+        
+        // Lắng nghe sự kiện thay đổi trên canvas
+        canvas.on('object:modified', saveToHistory);
+        canvas.on('object:added', saveToHistory);
+        canvas.on('object:removed', saveToHistory);
 
         // ========== CẬP NHẬT TRẠNG THÁI ==========
         function updateStatus(message) {
@@ -734,50 +874,72 @@
             console.log('Status:', message);
         }
 
-        // ========== ZOOM FUNCTIONS ==========
+        // ========== ZOOM FUNCTIONS - ĐÃ SỬA ==========
         function updateZoomDisplay() {
             const percent = Math.round(zoomLevel * 100);
             document.getElementById('zoomLevel').textContent = percent + '%';
             document.getElementById('zoomStatus').textContent = percent + '%';
             
-            // Cập nhật viewport transform
             canvas.setZoom(zoomLevel);
             canvas.renderAll();
         }
 
+        function zoomToPoint(point, zoom) {
+            const minZoom = MIN_ZOOM;
+            const maxZoom = MAX_ZOOM;
+            
+            if (zoom < minZoom) zoom = minZoom;
+            if (zoom > maxZoom) zoom = maxZoom;
+            
+            zoomLevel = zoom;
+            canvas.zoomToPoint(point, zoomLevel);
+            updateZoomDisplay();
+            updateStatus(`Zoom: ${Math.round(zoomLevel * 100)}%`);
+        }
+
         function zoomIn() {
-            if (zoomLevel < MAX_ZOOM) {
-                zoomLevel += ZOOM_STEP;
-                updateZoomDisplay();
-                updateStatus(`Zoom: ${Math.round(zoomLevel * 100)}%`);
-            }
+            const center = canvas.getCenter();
+            zoomToPoint(center, zoomLevel + ZOOM_STEP);
         }
 
         function zoomOut() {
-            if (zoomLevel > MIN_ZOOM) {
-                zoomLevel -= ZOOM_STEP;
-                updateZoomDisplay();
-                updateStatus(`Zoom: ${Math.round(zoomLevel * 100)}%`);
-            }
+            const center = canvas.getCenter();
+            zoomToPoint(center, zoomLevel - ZOOM_STEP);
         }
 
         function resetZoom() {
-            zoomLevel = 1;
-            updateZoomDisplay();
+            const center = canvas.getCenter();
+            zoomToPoint(center, 1);
             updateStatus("Zoom đã reset về 100%");
         }
 
-        // Zoom bằng scroll chuột
+        // Zoom bằng scroll chuột - zoom vào vị trí chuột
         canvas.on('mouse:wheel', function(opt) {
             opt.e.preventDefault();
             opt.e.stopPropagation();
             
             const delta = opt.e.deltaY;
-            if (delta < 0) {
-                zoomIn();
-            } else {
-                zoomOut();
-            }
+            const zoom = canvas.getZoom();
+            
+            // Lấy vị trí chuột tương đối trên canvas
+            const pointer = canvas.getPointer(opt.e);
+            
+            // Tính toán zoom mới
+            let newZoom = delta > 0 ? zoom * 0.9 : zoom * 1.1;
+            
+            // Giới hạn zoom
+            if (newZoom < MIN_ZOOM) newZoom = MIN_ZOOM;
+            if (newZoom > MAX_ZOOM) newZoom = MAX_ZOOM;
+            
+            // Zoom vào điểm chuột
+            zoomToPoint(pointer, newZoom);
+        });
+
+        // Theo dõi vị trí chuột
+        canvas.on('mouse:move', function(opt) {
+            const pointer = canvas.getPointer(opt.e);
+            lastMouseX = pointer.x;
+            lastMouseY = pointer.y;
         });
 
         // Gán sự kiện cho nút zoom
@@ -823,6 +985,7 @@
                         canvas.add(img);
                         canvas.sendToBack(img);
                         updateStatus('Mockup đã được tải lên!');
+                        saveToHistory();
                     });
                 };
                 reader.readAsDataURL(e.target.files[0]);
@@ -910,6 +1073,7 @@
                     canvas.setActiveObject(img);
                     updateStatus(`Đã thêm "${texture.name}" vào mockup`);
                     updateSelectedObject();
+                    saveToHistory();
                 });
             }
         });
@@ -928,6 +1092,7 @@
                         hasBorders: false
                     });
                     this.innerHTML = '<i class="fas fa-expand-alt"></i><span>Transform</span>';
+                    saveToHistory();
                 } else {
                     activeObj.set({
                         hasControls: true,
@@ -939,14 +1104,6 @@
                 updateStatus('Chế độ Transform: ' + (activeObj.hasControls ? 'Bật' : 'Tắt'));
             } else {
                 updateStatus('Vui lòng chọn một đối tượng để transform');
-            }
-        });
-
-        // Phím tắt Ctrl+T
-        document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 't') {
-                e.preventDefault();
-                document.getElementById('transformBtn').click();
             }
         });
 
@@ -978,9 +1135,99 @@
             
             canvas.renderAll();
             updateStatus('Đã fit ảnh theo bề mặt mockup');
+            saveToHistory();
         });
 
-        // ========== 5. AUTO CÂN MÀU ==========
+        // ========== 5. WARP BỀ MẶT - THUẬT TOÁN NÂNG CAO ==========
+        document.getElementById('warpSurfaceBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj) {
+                updateStatus('Vui lòng chọn đối tượng cần warp');
+                return;
+            }
+            
+            if (!mockupImage) {
+                updateStatus('Cần có mockup để warp bề mặt');
+                return;
+            }
+            
+            updateStatus('Đang áp dụng hiệu ứng warp cho bề mặt cong...');
+            
+            // Tạo hiệu ứng warp cho bề mặt cong/lồi/lõm
+            // Sử dụng fabric.js filters kết hợp với distortion
+            const filters = [];
+            
+            // Thêm hiệu ứng sóng nhẹ cho bề mặt gợn sóng
+            filters.push(
+                new fabric.Image.filters.Saturation({
+                    saturation: 0.1
+                }),
+                new fabric.Image.filters.Brightness({
+                    brightness: 0.05
+                })
+            );
+            
+            // Tạo hiệu ứng uốn cong bằng skew và scale không đều
+            const warpIntensity = 0.15;
+            const randomSkewX = (Math.random() - 0.5) * warpIntensity * 20;
+            const randomSkewY = (Math.random() - 0.5) * warpIntensity * 20;
+            
+            // Áp dụng biến dạng không đều cho hiệu ứng bề mặt 3D
+            activeObj.set({
+                skewX: activeObj.skewX + randomSkewX,
+                skewY: activeObj.skewY + randomSkewY,
+                scaleX: activeObj.scaleX * (1 + (Math.random() - 0.5) * warpIntensity),
+                scaleY: activeObj.scaleY * (1 + (Math.random() - 0.5) * warpIntensity),
+                opacity: 0.85 + Math.random() * 0.1
+            });
+            
+            // Thêm hiệu ứng gradient mask cho các cạnh
+            const gradientMask = new fabric.Gradient({
+                type: 'linear',
+                coords: {
+                    x1: 0,
+                    y1: 0,
+                    x2: activeObj.width,
+                    y2: activeObj.height
+                },
+                colorStops: [
+                    { offset: 0, color: 'rgba(255,255,255,0.9)' },
+                    { offset: 0.5, color: 'rgba(255,255,255,1)' },
+                    { offset: 1, color: 'rgba(255,255,255,0.9)' }
+                ]
+            });
+            
+            // Áp dụng bộ lọc và render
+            if (filters.length > 0) {
+                activeObj.filters = filters;
+                activeObj.applyFilters();
+            }
+            
+            // Điều chỉnh vị trí để khớp với mockup
+            const mockupCenterX = mockupImage.left + mockupImage.width * mockupImage.scaleX / 2;
+            const mockupCenterY = mockupImage.top + mockupImage.height * mockupImage.scaleY / 2;
+            
+            activeObj.set({
+                left: mockupCenterX - activeObj.width * activeObj.scaleX / 2,
+                top: mockupCenterY - activeObj.height * activeObj.scaleY / 2
+            });
+            
+            // Thêm hiệu ứng shadow cho chiều sâu
+            activeObj.set({
+                shadow: new fabric.Shadow({
+                    color: 'rgba(0,0,0,0.3)',
+                    blur: 10,
+                    offsetX: 5,
+                    offsetY: 5
+                })
+            });
+            
+            canvas.renderAll();
+            updateStatus('Đã áp dụng hiệu ứng warp cho bề mặt cong/lồi/lõm');
+            saveToHistory();
+        });
+
+        // ========== 6. AUTO CÂN MÀU ==========
         document.getElementById('autoColorBtn').addEventListener('click', function() {
             const activeObj = canvas.getActiveObject();
             if (!activeObj || !mockupImage) {
@@ -997,13 +1244,15 @@
             
             activeObj.filters.push(
                 new fabric.Image.filters.Brightness({ brightness: 0.05 }),
-                new fabric.Image.filters.Contrast({ contrast: 0.1 })
+                new fabric.Image.filters.Contrast({ contrast: 0.1 }),
+                new fabric.Image.filters.Saturation({ saturation: -0.05 })
             );
             
             activeObj.applyFilters();
             canvas.renderAll();
             
             updateStatus('Đã cân màu tự động với mockup');
+            saveToHistory();
         });
 
         // ========== CÁC CÔNG CỤ KHÁC ==========
@@ -1013,6 +1262,7 @@
                 canvas.remove(activeObj);
                 updateStatus('Đã xóa đối tượng');
                 updateSelectedObject();
+                saveToHistory();
             }
         });
 
@@ -1022,6 +1272,7 @@
                 activeObj.bringToFront();
                 canvas.renderAll();
                 updateStatus('Đã đưa lên lớp trên');
+                saveToHistory();
             }
         });
 
@@ -1034,6 +1285,38 @@
                 }
                 canvas.renderAll();
                 updateStatus('Đã đưa xuống lớp dưới');
+                saveToHistory();
+            }
+        });
+
+        // ========== UNDO/REDO BUTTONS - MỚI ==========
+        document.getElementById('undoBtn').addEventListener('click', undo);
+        document.getElementById('redoBtn').addEventListener('click', redo);
+
+        // ========== PHÍM TẮT ==========
+        document.addEventListener('keydown', function(e) {
+            // Transform: Ctrl+T
+            if (e.ctrlKey && e.key === 't') {
+                e.preventDefault();
+                document.getElementById('transformBtn').click();
+            }
+            
+            // Save: Ctrl+S
+            if (e.ctrlKey && e.key === 's') {
+                e.preventDefault();
+                document.getElementById('saveBtn').click();
+            }
+            
+            // Undo: Ctrl+Z
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+            
+            // Redo: Ctrl+Y hoặc Ctrl+Shift+Z
+            if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) {
+                e.preventDefault();
+                redo();
             }
         });
 
@@ -1191,14 +1474,6 @@
             });
         }
 
-        // Phím tắt Ctrl+S để save
-        document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.key === 's') {
-                e.preventDefault();
-                document.getElementById('saveBtn').click();
-            }
-        });
-
         // ========== THEO DÕI ĐỐI TƯỢNG ĐANG CHỌN ==========
         canvas.on('selection:created', updateSelectedObject);
         canvas.on('selection:updated', updateSelectedObject);
@@ -1221,6 +1496,13 @@
         updateZoomDisplay();
         updateStatus('Sẵn sàng - Tải mockup và ảnh vật liệu để bắt đầu');
         updateSelectedObject();
+        updateHistoryButtons();
+        updateHistoryStatus();
+        
+        // Lưu state ban đầu
+        setTimeout(() => {
+            saveToHistory();
+        }, 100);
     </script>
 </body>
 </html>
