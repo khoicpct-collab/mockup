@@ -1,837 +1,460 @@
-// ========== KHỞI TẠO CANVAS FABRIC.JS ==========
-const canvas = new fabric.Canvas('main-canvas', {
-    backgroundColor: 'transparent',
-    preserveObjectStacking: true,
-    selection: true,
-    selectionKey: 'shiftKey'
-});
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>MOCKUP K - Improved Lasso & Warp (Minimal)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; display:flex; height:100vh; }
+    #sidebar { width: 300px; padding:12px; border-right:1px solid #ddd; box-sizing:border-box; background:#fafafa; }
+    #canvas-wrap { flex:1; display:flex; align-items:center; justify-content:center; background:#eee; }
+    canvas { border:1px solid #aaa; background:white; }
+    button, input, label { display:block; margin:8px 0; }
+    .small { font-size:13px; }
+    #status { margin-top:10px; color:#333; font-size:13px; min-height:18px; }
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <h3>MOCKUP K — Tools</h3>
+    <label><input type="file" id="uploadMockup" accept="image/*" /> Tải mockup (background)</label>
+    <label><input type="file" id="uploadTexture" accept="image/*" /> Tải vật liệu (texture)</label>
 
-// ========== BIẾN CHO CÔNG CỤ LASO CẢI TIẾN (Đảm bảo gọi DOM sau khi nó được thêm vào HTML) ==========
-let lassoCanvas = document.getElementById('lassoCanvas');
-let lassoCtx = null; 
-if (lassoCanvas) {
-    lassoCtx = lassoCanvas.getContext('2d');
-}
+    <hr/>
+    <button id="btnLassoMode">Bật Lasso</button>
+    <button id="btnDeleteLasso">Xóa vùng Lasso (Feather)</button>
+    <button id="btnWarpAuto">Warp Auto ( nâng cao )</button>
 
-function resizeCanvas() {
-    const container = document.querySelector('.canvas-container');
-    canvas.setWidth(container.clientWidth);
-    canvas.setHeight(container.clientHeight);
-    
-    // Cập nhật kích thước cho lasso canvas và overlay
-    const lassoOverlay = document.getElementById('lassoOverlay');
-    if (lassoCanvas) {
-        lassoCanvas.width = container.clientWidth;
-        lassoCanvas.height = container.clientHeight;
-    }
-    if (lassoOverlay) {
-        // Chỉ cập nhật style nếu overlay tồn tại
-        lassoOverlay.style.width = container.clientWidth + 'px';
-        lassoOverlay.style.height = container.clientHeight + 'px';
-    }
-    
-    canvas.renderAll();
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas(); // Gọi lần đầu để setup
+    <label class="small">Warp intensity <span id="warpVal">40</span></label>
+    <input id="warpRange" type="range" min="0" max="200" value="40" />
 
-// ========== BIẾN TOÀN CỤC ==========
-let mockupImage = null;
-let displacementMap = null; 
-let textures = [];
-let zoomLevel = 1;
-let currentToolMode = 'select';
+    <label class="small">Feather (percent of min dim)</label>
+    <input id="featherRange" type="range" min="0" max="10" value="1" />
 
-let drawingBrush = {
-    color: '#4ecdc4',
-    width: 5,
-    opacity: 1.0
-};
+    <div id="status">Sẵn sàng.</div>
+  </div>
 
-let isLassoMode = false;
-let lassoPoints = [];
-let isDrawingLasso = false;
-let originalSelectionState = true;
+  <div id="canvas-wrap">
+    <canvas id="c" width="1000" height="700"></canvas>
+  </div>
 
-// ========== UNDO/REDO SYSTEM ==========
-let history = [];
-let historyIndex = -1;
-const MAX_HISTORY = 50;
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
+  <!-- glfx.js (for displacement) - from CDN -->
+  <script src="https://cdn.jsdelivr.net/gh/evanw/glfx.js/glfx.js"></script>
 
-function saveToHistory() {
-    if (historyIndex < history.length - 1) {
-        history = history.slice(0, historyIndex + 1);
-    }
-    
-    const state = canvas.toDatalessJSON(['globalCompositeOperation']);
-    history.push(state);
-    historyIndex++;
-    
-    if (history.length > MAX_HISTORY) {
-        history.shift();
-        historyIndex--;
-    }
-    
-    updateHistoryButtons();
-    updateHistoryStatus();
-}
+  <script>
+  /*************************************************************************
+   * Minimal Mockup K app with improved Lasso delete (feather) and Warp
+   * - This is a self-contained example you can copy/paste.
+   * - Replace or merge functions into your existing project as needed.
+   *************************************************************************/
 
-function updateHistoryButtons() {
-    const undoBtn = document.getElementById('undoBtn');
-    const redoBtn = document.getElementById('redoBtn');
-    if(undoBtn) undoBtn.disabled = historyIndex <= 0;
-    if(redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
-}
+  const canvas = new fabric.Canvas('c', { preserveObjectStacking: true, selection: false });
+  let mockupImage = null; // background mockup (fabric.Image)
+  let currentTexture = null; // active texture (fabric.Image)
+  let isLassoMode = false;
+  let lassoPoints = [];
+  let lassoLine = null;
 
-function updateHistoryStatus() {
-    const statusElement = document.getElementById('historyStatus');
-    if(statusElement) statusElement.textContent = 
-        `${historyIndex}/${history.length-1}`;
-}
+  const statusEl = document.getElementById('status');
+  function updateStatus(text) { statusEl.textContent = text; }
 
-canvas.on('object:modified', saveToHistory);
-canvas.on('object:added', saveToHistory);
-canvas.on('object:removed', saveToHistory);
-
-// ========== CÔNG CỤ VẼ TỰ DO ==========
-function activateDrawingMode() {
-    currentToolMode = 'draw';
-    canvas.isDrawingMode = true;
-    canvas.selection = false;
-    
-    canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-    canvas.freeDrawingBrush.color = drawingBrush.color;
-    canvas.freeDrawingBrush.width = drawingBrush.width;
-    canvas.freeDrawingBrush.opacity = drawingBrush.opacity;
-    
-    const drawingControls = document.getElementById('drawingControls');
-    if(drawingControls) drawingControls.style.display = 'flex';
-    updateToolButtons();
-    updateStatus('Chế độ vẽ tự do - Kéo chuột để vẽ');
-}
-
-function deactivateDrawingMode() {
-    canvas.isDrawingMode = false;
-    canvas.selection = true;
-    const drawingControls = document.getElementById('drawingControls');
-    if(drawingControls) drawingControls.style.display = 'none';
-}
-
-const drawBtn = document.getElementById('drawBtn');
-if(drawBtn) {
-    drawBtn.addEventListener('click', function() {
-        if (currentToolMode === 'draw') {
-            setToolMode('select');
-        } else {
-            setToolMode('draw');
-        }
+  // UI
+  document.getElementById('uploadMockup').addEventListener('change', ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    const url = URL.createObjectURL(f);
+    fabric.Image.fromURL(url, img => {
+      // fit to canvas
+      img.set({ selectable:false, evented:false, left:0, top:0 });
+      const ratio = Math.min(canvas.width / img.width, canvas.height / img.height);
+      img.scale(ratio);
+      canvas.clear();
+      mockupImage = img;
+      canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+      updateStatus('Mockup loaded.');
     });
-}
+  });
 
-const drawingColor = document.getElementById('drawingColor');
-if(drawingColor) {
-    drawingColor.addEventListener('input', function(e) {
-        drawingBrush.color = e.target.value;
-        if (currentToolMode === 'draw') {
-            canvas.freeDrawingBrush.color = drawingBrush.color;
-        }
-        e.target.style.background = drawingBrush.color;
+  document.getElementById('uploadTexture').addEventListener('change', ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    const url = URL.createObjectURL(f);
+    fabric.Image.fromURL(url, img => {
+      img.set({
+        left: 120, top: 80,
+        scaleX: 0.6, scaleY: 0.6,
+        cornerStyle: 'circle',
+        cornerColor: '#4ecdc4',
+        borderColor: '#4ecdc4',
+        name: 'texture'
+      });
+      currentTexture = img;
+      canvas.add(img);
+      canvas.setActiveObject(img);
+      updateStatus('Texture loaded. Kéo/thu phóng/góc để đặt.');
     });
-}
+  });
 
-const drawingWidth = document.getElementById('drawingWidth');
-const drawingWidthValue = document.getElementById('drawingWidthValue');
-if(drawingWidth) {
-    drawingWidth.addEventListener('input', function(e) {
-        drawingBrush.width = parseInt(e.target.value);
-        if(drawingWidthValue) drawingWidthValue.textContent = drawingBrush.width + 'px';
-        
-        if (currentToolMode === 'draw') {
-            canvas.freeDrawingBrush.width = drawingBrush.width;
-        }
+  // Lasso drawing handlers
+  document.getElementById('btnLassoMode').addEventListener('click', () => {
+    isLassoMode = !isLassoMode;
+    document.getElementById('btnLassoMode').textContent = isLassoMode ? 'Tắt Lasso' : 'Bật Lasso';
+    if (isLassoMode) {
+      canvas.defaultCursor = 'crosshair';
+      lassoPoints = [];
+      if (lassoLine) { canvas.remove(lassoLine); lassoLine = null; }
+      updateStatus('Đang ở chế độ Lasso: click để vẽ (double-click để đóng vùng).');
+    } else {
+      canvas.defaultCursor = 'default';
+    }
+  });
+
+  // Mouse events for lasso (viewport coordinates)
+  canvas.on('mouse:down', function(opt) {
+    if (!isLassoMode) return;
+    const pointer = canvas.getPointer(opt.e, true);
+    lassoPoints.push({ x: pointer.x, y: pointer.y });
+    redrawLassoPath();
+  });
+
+  canvas.on('mouse:dblclick', function(opt) {
+    if (!isLassoMode) return;
+    // close and finish
+    isLassoMode = false;
+    document.getElementById('btnLassoMode').textContent = 'Bật Lasso';
+    updateStatus('Vùng đã đóng. Nhấn "Xóa vùng Lasso" để xóa (feather).');
+  });
+
+  function redrawLassoPath() {
+    if (lassoLine) { canvas.remove(lassoLine); lassoLine = null; }
+    if (lassoPoints.length < 2) return;
+    const points = lassoPoints.reduce((acc, p) => acc.concat([p.x, p.y]), []);
+    lassoLine = new fabric.Polygon(lassoPoints, {
+      stroke: '#ff5722', strokeWidth: 2, fill: 'rgba(255,87,34,0.12)', selectable:false, evented:false
     });
-}
+    canvas.add(lassoLine);
+    canvas.requestRenderAll();
+  }
 
-const drawingOpacity = document.getElementById('drawingOpacity');
-const drawingOpacityValue = document.getElementById('drawingOpacityValue');
-if(drawingOpacity) {
-    drawingOpacity.addEventListener('input', function(e) {
-        drawingBrush.opacity = parseInt(e.target.value) / 100;
-        if(drawingOpacityValue) drawingOpacityValue.textContent = e.target.value + '%';
-        
-        if (currentToolMode === 'draw') {
-            canvas.freeDrawingBrush.opacity = drawingBrush.opacity;
-        }
-    });
-}
+  document.getElementById('btnDeleteLasso').addEventListener('click', () => {
+    // pass feather percent
+    const featherPercent = Number(document.getElementById('featherRange').value) || 1;
+    deleteLassoArea({ featherPercent });
+  });
 
-const clearDrawing = document.getElementById('clearDrawing');
-if(clearDrawing) {
-    clearDrawing.addEventListener('click', function() {
-        const drawingObjects = canvas.getObjects().filter(obj => 
-            obj.type === 'path' && obj.name === 'free_drawing'
-        );
-        
-        drawingObjects.forEach(obj => {
-            canvas.remove(obj);
-        });
-        
-        canvas.renderAll();
-        saveToHistory();
-        updateStatus('Đã xóa tất cả nét vẽ');
-    });
-}
-
-canvas.on('path:created', function(e) {
-    e.path.name = 'free_drawing';
-    saveToHistory();
-});
-
-// ========== CÔNG CỤ LASO CẢI TIẾN ==========
-function activateLassoMode() {
-    if (!lassoCanvas || !lassoCtx) {
-        updateStatus('Lỗi: Không tìm thấy Lasso Canvas. Vui lòng kiểm tra lại HTML.');
-        return;
+  /*************************************************************************
+   * Improved deleteLassoArea: smooth feathered cut using mask canvas
+   * - Uses fabric internals to map viewport lasso points into object-local image pixels
+   **************************************************************************/
+  function deleteLassoArea(options = {}) {
+    if (!lassoPoints || lassoPoints.length < 3) {
+      updateStatus('Vui lòng tạo vùng chọn trước khi xóa');
+      return;
     }
-    
-    currentToolMode = 'lasso';
-    isLassoMode = true;
-    isDrawingLasso = false;
-    lassoPoints = [];
-    
-    // Lưu trạng thái canvas ban đầu
-    originalSelectionState = canvas.selection;
-    canvas.selection = false;
-    canvas.defaultCursor = 'crosshair';
-    
-    const lassoOverlay = document.getElementById('lassoOverlay');
-    // Hiển thị overlay
-    lassoOverlay.style.display = 'block';
-    lassoOverlay.style.pointerEvents = 'auto';
-    
-    updateToolButtons();
-    updateStatus('Laso Tool: Kéo chuột để vẽ vùng chọn, nhấn Enter để hoàn thành');
-}
-
-function startLassoDrawing(event) {
-    const targetElement = event.target || event.srcElement;
-    if (!isLassoMode || targetElement !== lassoCanvas) return;
-    
-    // Ngăn chặn hành vi mặc định
-    event.preventDefault();
-    event.stopPropagation();
-    
-    isDrawingLasso = true;
-    
-    // Lấy tọa độ chuột (relative to canvas)
-    const rect = lassoCanvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    
-    lassoPoints = [{x, y}];
-    
-    // Bắt đầu vẽ trên lasso canvas
-    lassoCtx.clearRect(0, 0, lassoCanvas.width, lassoCanvas.height);
-    lassoCtx.beginPath();
-    lassoCtx.moveTo(x, y);
-    lassoCtx.strokeStyle = '#ff0000';
-    lassoCtx.lineWidth = 2;
-    lassoCtx.lineJoin = 'round';
-    lassoCtx.lineCap = 'round';
-}
-
-function continueLassoDrawing(event) {
-    if (!isLassoMode || !isDrawingLasso) return;
-    
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const rect = lassoCanvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    
-    lassoPoints.push({x, y});
-    
-    // Vẽ đường trên lasso canvas
-    lassoCtx.lineTo(x, y);
-    lassoCtx.stroke();
-}
-
-function endLassoDrawing(event) {
-    if (!isLassoMode || !isDrawingLasso) return;
-    
-    event.preventDefault();
-    isDrawingLasso = false;
-    finishLassoSelection(); 
-}
-
-function finishLassoSelection() {
-    if (!isLassoMode || lassoPoints.length < 3) {
-        updateStatus('Vui lòng vẽ vùng chọn với ít nhất 3 điểm');
-        return;
-    }
-    
-    // Đóng đường vẽ
-    lassoCtx.lineTo(lassoPoints[0].x, lassoPoints[0].y);
-    lassoCtx.closePath();
-    lassoCtx.fillStyle = 'rgba(78, 205, 196, 0.3)'; // Màu xanh teal bán trong suốt
-    lassoCtx.fill();
-    lassoCtx.strokeStyle = '#4ecdc4'; // Màu viền
-    lassoCtx.lineWidth = 3;
-    lassoCtx.stroke();
-    
-    updateStatus('Đã tạo vùng chọn. Nhấn Delete để xóa phần bên trong vùng này.');
-}
-
-function deleteLassoArea() {
-    if (!isLassoMode || lassoPoints.length < 3) {
-        updateStatus('Vui lòng tạo vùng chọn trước khi xóa');
-        return;
-    }
-    
-    const activeObj = canvas.getActiveObject();
-    if (!activeObj || activeObj.name !== 'texture' || activeObj.isEditing) {
-        updateStatus('Vui lòng chọn một vật liệu (Texture) trước khi xóa vùng chọn');
-        return;
-    }
-    
-    // 1. Tạo một canvas ẩn để xử lý
-    const tempCanvas = document.createElement('canvas');
-    const ctx = tempCanvas.getContext('2d');
-    
-    // Lấy kích thước texture GỐC
-    const img = activeObj.getElement();
-    tempCanvas.width = img.naturalWidth || img.width;
-    tempCanvas.height = img.naturalHeight || img.height;
-    
-    // 2. Vẽ texture gốc
-    ctx.drawImage(img, 0, 0, tempCanvas.width, tempCanvas.height);
-    
-    // 3. Tạo path từ các điểm lasso (chuyển đổi tọa độ)
-    ctx.beginPath();
-    
-    // Chuyển đổi tọa độ từ canvas SANG image
-    const matrix = activeObj.calcTransformMatrix();
-    const invertedMatrix = fabric.util.invertTransform(matrix);
-    
-    // Điểm đầu tiên
-    const firstTransformed = fabric.util.transformPoint(
-        new fabric.Point(lassoPoints[0].x, lassoPoints[0].y),
-        invertedMatrix
-    );
-    ctx.moveTo(firstTransformed.x, firstTransformed.y);
-    
-    // Vẽ đường qua các điểm
-    for (let i = 1; i < lassoPoints.length; i++) {
-        const transformedPoint = fabric.util.transformPoint(
-            new fabric.Point(lassoPoints[i].x, lassoPoints[i].y),
-            invertedMatrix
-        );
-        ctx.lineTo(transformedPoint.x, transformedPoint.y);
-    }
-    
-    // Đóng path
-    ctx.closePath();
-    
-    // 4. Xóa phần bên trong path (Destination-Out)
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fill();
-    
-    // 5. Tạo ảnh mới và thay thế
-    fabric.Image.fromURL(tempCanvas.toDataURL(), function(newImg) {
-        // Sao chép thuộc tính của đối tượng cũ
-        newImg.set({
-            left: activeObj.left,
-            top: activeObj.top,
-            scaleX: activeObj.scaleX,
-            scaleY: activeObj.scaleY,
-            angle: activeObj.angle,
-            opacity: activeObj.opacity,
-            skewX: activeObj.skewX,
-            skewY: activeObj.skewY,
-            globalCompositeOperation: activeObj.globalCompositeOperation,
-            hasControls: true,
-            hasBorders: true,
-            cornerStyle: 'circle',
-            cornerColor: '#4ecdc4',
-            borderColor: '#4ecdc4',
-            cornerSize: 12,
-            transparentCorners: false,
-            name: 'texture'
-        });
-        
-        canvas.remove(activeObj);
-        canvas.add(newImg);
-        canvas.setActiveObject(newImg);
-        
-        // Dọn dẹp lasso và lưu lịch sử
-        cleanupLasso();
-        canvas.renderAll();
-        saveToHistory();
-        updateStatus('Đã xóa phần bên trong vùng chọn thành công!');
-    });
-}
-
-function cleanupLasso() {
-    const lassoOverlay = document.getElementById('lassoOverlay');
-
-    // Xóa canvas lasso
-    if (lassoCtx) {
-        lassoCtx.clearRect(0, 0, lassoCanvas.width, lassoCanvas.height);
-    }
-    
-    // Ẩn overlay
-    if(lassoOverlay) {
-        lassoOverlay.style.display = 'none';
-        lassoOverlay.style.pointerEvents = 'none';
-    }
-    
-    lassoPoints = [];
-    isDrawingLasso = false;
-    
-    // Khôi phục lại trạng thái canvas
-    canvas.selection = originalSelectionState;
-    canvas.defaultCursor = 'default';
-    
-    canvas.renderAll();
-}
-
-// ========== WARP TỰ ĐỘNG NÂNG CAO ==========
-const warpAutoBtn = document.getElementById('warpAutoBtn');
-if(warpAutoBtn) warpAutoBtn.addEventListener('click', applyAutoWarp);
-
-async function applyAutoWarp() {
     const activeObj = canvas.getActiveObject();
     if (!activeObj || activeObj.name !== 'texture') {
-        updateStatus('Vui lòng chọn một vật liệu để warp tự động (W)');
-        return;
+      updateStatus('Vui lòng chọn một vật liệu (texture) trước khi xóa vùng chọn');
+      return;
     }
-    
-    // 1. Tạo displacement map nếu chưa có
-    if (!displacementMap) {
-        updateStatus('Đang tạo displacement map tự động... (Bước 1/2)');
-        try {
-            await createAutoDisplacementMap();
-        } catch (e) {
-            updateStatus(e.message);
-            return;
-        }
+
+    const imgEl = activeObj.getElement();
+    if (!imgEl) { updateStatus('Ảnh texture không hợp lệ'); return; }
+
+    // Natural image size
+    const imgW = imgEl.naturalWidth || imgEl.width;
+    const imgH = imgEl.naturalHeight || imgEl.height;
+
+    // Create canvases matching image natural resolution
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = imgW; srcCanvas.height = imgH;
+    const srcCtx = srcCanvas.getContext('2d');
+
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = imgW; maskCanvas.height = imgH;
+    const maskCtx = maskCanvas.getContext('2d');
+
+    // Draw original texture into srcCanvas at natural resolution
+    srcCtx.drawImage(imgEl, 0, 0, imgW, imgH);
+
+    // Map lasso points viewport -> image-local using object's transform
+    const matrix = activeObj.calcTransformMatrix();
+    const inverted = fabric.util.invertTransform(matrix);
+
+    maskCtx.fillStyle = 'black';
+    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+    maskCtx.beginPath();
+    let p = fabric.util.transformPoint(new fabric.Point(lassoPoints[0].x, lassoPoints[0].y), inverted);
+    maskCtx.moveTo(p.x, p.y);
+    for (let i = 1; i < lassoPoints.length; i++) {
+      let pp = fabric.util.transformPoint(new fabric.Point(lassoPoints[i].x, lassoPoints[i].y), inverted);
+      maskCtx.lineTo(pp.x, pp.y);
     }
-    
-    updateStatus('Đang áp dụng hiệu ứng warp... (Bước 2/2)');
-    
-    // 2. Áp dụng warp
-    applyWarpWithSettings(activeObj, {
-        dispIntensity: 40, // Cường độ Warp mặc định
-        warpX: 0,
-        warpY: 0,
-        bulge: 0,
-        pinch: 0,
-        wave: 0,
-        blend: 90 // Độ hòa trộn màu mặc định cao hơn
-    });
-}
+    maskCtx.closePath();
+    maskCtx.fillStyle = 'white';
+    maskCtx.fill();
 
-function createAutoDisplacementMap() {
-    return new Promise((resolve, reject) => {
-        if (!mockupImage) {
-            reject(new Error('Chưa có mockup - Vui lòng tải ảnh mockup trước!'));
-            return;
-        }
-        
-        const mockupElement = mockupImage.getElement();
-        const tempCanvas = document.createElement('canvas');
-        const ctx = tempCanvas.getContext('2d');
-        
-        // Kích thước của map sẽ bằng kích thước hiển thị của mockup
-        const bounds = mockupImage.getBoundingRect();
-        tempCanvas.width = bounds.width;
-        tempCanvas.height = bounds.height;
-        
-        // Tính toán tọa độ để chỉ vẽ phần mockup (loại bỏ padding/crop nếu có)
-        const scaleX = tempCanvas.width / mockupImage.width;
-        const scaleY = tempCanvas.height / mockupImage.height;
-        
-        ctx.drawImage(mockupElement, 
-            0, 0, mockupImage.width, mockupImage.height,
-            0, 0, tempCanvas.width, tempCanvas.height
-        );
-        
-        // 1. Chuyển sang đen trắng và tăng độ tương phản nhẹ (TỐT HƠN)
-        const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-        const data = imageData.data;
-        
-        for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-            
-            // Tính luminance
-            let luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-            
-            // Tăng tương phản nhẹ (ví dụ: nhân với 1.2)
-            luminance = (luminance - 128) * 1.2 + 128;
-            luminance = Math.max(0, Math.min(255, luminance));
-            
-            data[i] = luminance;
-            data[i + 1] = luminance;
-            data[i + 2] = luminance;
-        }
-        
-        ctx.putImageData(imageData, 0, 0);
-        
-        // 2. Áp dụng blur nhẹ (Làm mềm các nếp gấp)
-        ctx.filter = 'blur(2px)';
-        ctx.drawImage(tempCanvas, 0, 0);
-        ctx.filter = 'none';
-        
-        // 3. Tạo displacement map từ canvas
-        const img = new Image();
-        img.onload = function() {
-            // Đảm bảo map có kích thước bằng kích thước hiển thị của mockup
-            displacementMap = img; 
-            updateStatus('Đã tạo Displacement Map tự động thành công');
-            resolve();
-        };
-        img.onerror = reject;
-        img.src = tempCanvas.toDataURL();
-    });
-}
+    // Feather amount: percent of smaller dimension, default 1%
+    const featherPct = options.featherPercent || Number(document.getElementById('featherRange').value) || 1;
+    const blurPx = Math.max(0, Math.round(Math.min(imgW, imgH) * (featherPct / 100)));
 
-function applyWarpWithSettings(obj, settings) {
-    const imgElement = obj.getElement();
-    
+    // Try canvas filter blur (modern browsers). Fallback to simple polygon cut
     try {
-        // Glfx.js cần được khởi tạo
-        if (!window.fx) {
-             throw new Error('Thư viện glfx.js không được tải.');
+      const tmp = document.createElement('canvas');
+      tmp.width = maskCanvas.width; tmp.height = maskCanvas.height;
+      const tctx = tmp.getContext('2d');
+      if (blurPx > 0) {
+        tctx.filter = `blur(${blurPx}px)`;
+      }
+      tctx.drawImage(maskCanvas, 0, 0);
+      tctx.filter = 'none';
+
+      const maskData = tctx.getImageData(0, 0, tmp.width, tmp.height);
+      const srcData = srcCtx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
+
+      // Apply mask to source alpha: where mask is white (255) -> removed
+      for (let i = 0; i < maskData.data.length; i += 4) {
+        // grayscale mask
+        const m = maskData.data[i]; // 0..255
+        // We want white to remove -> alpha reduced
+        const alphaFactor = 1 - (m / 255); // m=255 -> alphaFactor = 0 -> fully removed
+        srcData.data[i + 3] = Math.round(srcData.data[i + 3] * alphaFactor);
+      }
+      srcCtx.putImageData(srcData, 0, 0);
+    } catch (err) {
+      // Fallback: use destination-out
+      srcCtx.globalCompositeOperation = 'destination-out';
+      srcCtx.drawImage(maskCanvas, 0, 0);
+      srcCtx.globalCompositeOperation = 'source-over';
+    }
+
+    // Replace fabric object with new image preserving transforms
+    const newDataUrl = srcCanvas.toDataURL();
+    fabric.Image.fromURL(newDataUrl, function(newImg) {
+      newImg.set({
+        left: activeObj.left,
+        top: activeObj.top,
+        scaleX: activeObj.scaleX,
+        scaleY: activeObj.scaleY,
+        angle: activeObj.angle,
+        opacity: activeObj.opacity,
+        name: 'texture',
+        cornerStyle: 'circle',
+        cornerColor: '#4ecdc4',
+        borderColor: '#4ecdc4',
+        cornerSize: 12,
+        transparentCorners: false
+      });
+      canvas.remove(activeObj);
+      canvas.add(newImg);
+      canvas.setActiveObject(newImg);
+      cleanupLasso();
+      canvas.requestRenderAll();
+      updateStatus('Đã xóa vùng (feathered).');
+    });
+  }
+
+  function cleanupLasso() {
+    lassoPoints = [];
+    if (lassoLine) { canvas.remove(lassoLine); lassoLine = null; }
+    canvas.requestRenderAll();
+  }
+
+  /*************************************************************************
+   * Warp Auto (improved)
+   * - createAutoDisplacementMapForObject(obj, targetW, targetH) => returns Promise<HTMLImageElement>
+   * - applyWarpWithSettings(obj, settings)
+   *
+   * Uses glfx.js (cpu/gpu) to apply heightField displacement and adds subtle shading.
+   **************************************************************************/
+  function createAutoDisplacementMapForObject(obj, targetW, targetH) {
+    return new Promise((resolve, reject) => {
+      if (!mockupImage || !obj) { reject(new Error('Chưa có mockup hoặc object')); return; }
+      const mockEl = mockupImage.getElement();
+      const mockW = mockEl.naturalWidth || mockEl.width;
+      const mockH = mockEl.naturalHeight || mockEl.height;
+
+      // Compute object's bbox in canvas coords, then to mockup image coords
+      const objBbox = obj.getBoundingRect(true);
+      const mockInv = fabric.util.invertTransform(mockupImage.calcTransformMatrix());
+      const tl = fabric.util.transformPoint(new fabric.Point(objBbox.left, objBbox.top), mockInv);
+      const br = fabric.util.transformPoint(new fabric.Point(objBbox.left + objBbox.width, objBbox.top + objBbox.height), mockInv);
+
+      const sx = Math.max(0, Math.min(mockW, tl.x));
+      const sy = Math.max(0, Math.min(mockH, tl.y));
+      const sWidth = Math.max(1, Math.min(mockW - sx, br.x - tl.x));
+      const sHeight = Math.max(1, Math.min(mockH - sy, br.y - tl.y));
+
+      // Create temporary canvas sized to target displacement map
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = Math.max(1, targetW);
+      tempCanvas.height = Math.max(1, targetH);
+      const ctx = tempCanvas.getContext('2d');
+
+      // Draw scaled crop of mockup into temp canvas
+      ctx.drawImage(mockEl, sx, sy, sWidth, sHeight, 0, 0, tempCanvas.width, tempCanvas.height);
+
+      // Convert to grayscale + increase contrast slightly
+      try {
+        let id = ctx.getImageData(0,0,tempCanvas.width,tempCanvas.height);
+        let d = id.data;
+        for (let i=0;i<d.length;i+=4){
+          let lum = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+          lum = (lum - 128) * 1.4 + 128; // contrast boost
+          lum = Math.max(0, Math.min(255, lum));
+          d[i] = d[i+1] = d[i+2] = lum;
         }
-        
+        ctx.putImageData(id,0,0);
+      } catch(e) {
+        // ignore
+      }
+
+      // Soft blur to avoid harsh displacement
+      try {
+        const blurPx = Math.max(1, Math.round(Math.min(tempCanvas.width, tempCanvas.height) * 0.01));
+        const tmp = document.createElement('canvas');
+        tmp.width = tempCanvas.width; tmp.height = tempCanvas.height;
+        const tctx = tmp.getContext('2d');
+        tctx.filter = `blur(${blurPx}px)`;
+        tctx.drawImage(tempCanvas, 0, 0);
+        tctx.filter = 'none';
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.src = tmp.toDataURL();
+      } catch (err) {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.src = tempCanvas.toDataURL();
+      }
+    });
+  }
+
+  function applyWarpWithSettings(obj, settings = {}) {
+    const imgEl = obj.getElement();
+    if (!imgEl) { updateStatus('Ảnh vật liệu không hợp lệ'); return; }
+
+    const texW = imgEl.naturalWidth || imgEl.width;
+    const texH = imgEl.naturalHeight || imgEl.height;
+    updateStatus('Đang áp dụng Warp (nâng cao)...');
+
+    createAutoDisplacementMapForObject(obj, texW, texH).then(dispImg => {
+      try {
+        // create glfx canvas and textures
         const fxCanvas = fx.canvas();
-        const texture = fxCanvas.texture(imgElement);
-        
-        fxCanvas.draw(texture).update();
-        
-        // Áp dụng Displacement Map (Height Field)
-        if (settings.dispIntensity > 0 && displacementMap) {
-            const displacementTexture = fxCanvas.texture(displacementMap);
-            // Cường độ Warp: dispIntensity/100 * 0.15 (0.15 là giá trị max hợp lý)
-            fxCanvas.heightField(displacementTexture, settings.dispIntensity / 100 * 0.15).update();
+        const tex = fxCanvas.texture(imgEl);
+        const disp = fxCanvas.texture(dispImg);
+
+        fxCanvas.draw(tex).update();
+
+        // compute strength heuristically
+        const diag = Math.sqrt(texW*texW + texH*texH);
+        const baseStrength = (settings.dispIntensity || Number(document.getElementById('warpRange').value) || 40) / 100; // 0..2
+        const strength = Math.max(0.01, baseStrength * (diag / 500));
+
+        // apply heightField / displacement
+        if (disp) {
+          // heightField expects small numbers; scale down
+          fxCanvas.heightField(disp, Math.min(0.9, strength * 0.2)).update();
         }
-        
-        const warpedUrl = fxCanvas.toDataURL();
-        
-        fabric.Image.fromURL(warpedUrl, function(warpedImg) {
-            // Sao chép các thuộc tính và đặt Blending Mode
-            warpedImg.set({
-                left: obj.left,
-                top: obj.top,
-                scaleX: obj.scaleX,
-                scaleY: obj.scaleY,
-                angle: obj.angle,
-                skewX: obj.skewX + settings.warpX * 0.3,
-                skewY: obj.skewY + settings.warpY * 0.3,
-                globalCompositeOperation: 'multiply', // Blending mode cho hiệu ứng bóng đổ
-                opacity: settings.blend / 100, // Sử dụng blend làm opacity
-                hasControls: true,
-                hasBorders: true,
-                cornerStyle: 'circle',
-                cornerColor: '#4ecdc4',
-                borderColor: '#4ecdc4',
-                cornerSize: 12,
-                transparentCorners: false,
-                name: 'texture'
+
+        // optional mild bulge for realism
+        if (settings.bulge && settings.bulge > 0) {
+          fxCanvas.bulgePinch(0.5, 0.5, Math.min(0.9, settings.bulge/100 * 0.6), 0.9).update();
+        }
+
+        const warpedDataUrl = fxCanvas.toDataURL();
+
+        // add subtle shading/highlight on top for depth
+        const shadowCanvas = document.createElement('canvas');
+        shadowCanvas.width = texW; shadowCanvas.height = texH;
+        const sctx = shadowCanvas.getContext('2d');
+        const warpedImg = new Image();
+        warpedImg.onload = function() {
+          sctx.drawImage(warpedImg, 0, 0, texW, texH);
+
+          // multiply-ish darken to simulate fold shadows
+          sctx.globalCompositeOperation = 'source-over';
+          sctx.fillStyle = 'rgba(0,0,0,0.08)';
+          sctx.fillRect(0,0,texW,texH);
+
+          // gentle highlight
+          sctx.globalCompositeOperation = 'lighter';
+          const grad = sctx.createRadialGradient(texW*0.4, texH*0.3, 0, texW*0.4, texH*0.3, Math.max(texW,texH)*0.8);
+          grad.addColorStop(0, 'rgba(255,255,255,0.03)');
+          grad.addColorStop(1, 'rgba(255,255,255,0.0)');
+          sctx.fillStyle = grad;
+          sctx.fillRect(0,0,texW,texH);
+
+          // Replace object with new image preserving transforms
+          fabric.Image.fromURL(shadowCanvas.toDataURL(), function(finalImg) {
+            finalImg.set({
+              left: obj.left,
+              top: obj.top,
+              scaleX: obj.scaleX,
+              scaleY: obj.scaleY,
+              angle: obj.angle,
+              name: 'texture',
+              cornerStyle: 'circle',
+              cornerColor: '#4ecdc4',
+              borderColor: '#4ecdc4',
+              cornerSize: 12,
+              transparentCorners: false
             });
-            
             canvas.remove(obj);
-            canvas.add(warpedImg);
-            canvas.setActiveObject(warpedImg);
-            canvas.renderAll();
-            saveToHistory();
-            updateStatus('Đã áp dụng warp tự động với hiệu ứng Displacement Map!');
-        });
-    } catch (e) {
-        updateStatus('Lỗi Warp: Vui lòng kiểm tra console.');
-        console.error('Warp Error:', e);
-    }
-}
-
-// ========== CHUYỂN ĐỔI CÔNG CỤ ==========
-function setToolMode(mode) {
-    // Dọn dẹp mode cũ
-    if (currentToolMode === 'draw') {
-        deactivateDrawingMode();
-    } else if (currentToolMode === 'lasso') {
-        cleanupLasso();
-        // Xóa các event listener cũ
-        const lassoCanvas = document.getElementById('lassoCanvas');
-        if(lassoCanvas) {
-            lassoCanvas.removeEventListener('mousedown', handleLassoMouseDown);
-            lassoCanvas.removeEventListener('mousemove', handleLassoMouseMove);
-        }
-        document.removeEventListener('mouseup', handleLassoMouseUp);
-    }
-    
-    currentToolMode = mode;
-    
-    document.querySelectorAll('.tools .tool-btn').forEach(btn => {
-        btn.classList.remove('active-tool');
+            canvas.add(finalImg);
+            canvas.setActiveObject(finalImg);
+            canvas.requestRenderAll();
+            updateStatus('Warp auto áp dụng xong.');
+          });
+        };
+        warpedImg.src = warpedDataUrl;
+      } catch (err) {
+        console.error('Warp error', err);
+        updateStatus('Lỗi khi áp dụng Warp. Kiểm tra console.');
+      }
+    }).catch(err => {
+      console.error('Create displacement failed', err);
+      updateStatus('Không thể tạo displacement map cho vật liệu.');
     });
+  }
 
-    // Thiết lập các event handlers cho Laso
-    if (mode === 'lasso') {
-        const lassoBtn = document.getElementById('lassoBtn');
-        if(lassoBtn) lassoBtn.classList.add('active-tool');
-        activateLassoMode();
-        
-        // Thêm event listeners vào lassoCanvas
-        const lassoCanvas = document.getElementById('lassoCanvas');
-        if(lassoCanvas) {
-            lassoCanvas.addEventListener('mousedown', handleLassoMouseDown);
-            lassoCanvas.addEventListener('mousemove', handleLassoMouseMove);
-            document.addEventListener('mouseup', handleLassoMouseUp); // mouseup trên document để bao quát
-        } else {
-             updateStatus('Lỗi: Lasso Canvas chưa được thêm vào HTML');
-        }
-    } 
-    else if (mode === 'hand') {
-        const handToolBtn = document.getElementById('handToolBtn');
-        if(handToolBtn) handToolBtn.classList.add('active-tool');
-        canvas.selection = false;
-        canvas.defaultCursor = 'grab';
-        canvas.hoverCursor = 'grab';
-        updateStatus('Chế độ Bàn Tay (Pan) được kích hoạt');
-    } 
-    else if (mode === 'draw') {
-        const drawBtn = document.getElementById('drawBtn');
-        if(drawBtn) drawBtn.classList.add('active-tool');
-        activateDrawingMode();
+  // Hook warp button
+  document.getElementById('btnWarpAuto').addEventListener('click', () => {
+    const obj = canvas.getActiveObject();
+    if (!obj || obj.name !== 'texture') { updateStatus('Chọn vật liệu trước khi áp dụng Warp'); return; }
+    const settings = {
+      dispIntensity: Number(document.getElementById('warpRange').value),
+      bulge: 10,
+      warpX: 0,
+      warpY: 0,
+      blend: 60
+    };
+    applyWarpWithSettings(obj, settings);
+  });
+
+  // warp range display
+  const wr = document.getElementById('warpRange');
+  const wv = document.getElementById('warpVal');
+  wr.addEventListener('input', () => { wv.textContent = wr.value; });
+
+  // keyboard: press Esc to cancel lasso
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      isLassoMode = false;
+      document.getElementById('btnLassoMode').textContent = 'Bật Lasso';
+      cleanupLasso();
+      updateStatus('Đã hủy Lasso.');
     }
-    else {
-        const transformBtn = document.getElementById('transformBtn');
-        if(transformBtn) transformBtn.classList.add('active-tool');
-        canvas.selection = true;
-        canvas.defaultCursor = 'default';
-        canvas.hoverCursor = 'move';
-        updateStatus('Chế độ Select/Transform được kích hoạt');
-    }
-    
-    canvas.renderAll();
-}
+  });
 
-// Event handlers cho lasso
-function handleLassoMouseDown(e) {
-    if (isLassoMode) {
-        startLassoDrawing(e);
-    }
-}
+  // small helper save history stub (integrate with your existing undo)
+  function saveToHistory() {
+    // placeholder: integrate with your project's history/undo system
+    // e.g., store canvas.toJSON() snapshots
+    // console.log('Saved state to history (stub).');
+  }
 
-function handleLassoMouseMove(e) {
-    if (isLassoMode) {
-        continueLassoDrawing(e);
-    }
-}
-
-function handleLassoMouseUp(e) {
-    if (isLassoMode && isDrawingLasso) {
-        endLassoDrawing(e);
-    }
-}
-
-const handToolBtn = document.getElementById('handToolBtn');
-if(handToolBtn) handToolBtn.addEventListener('click', () => setToolMode('hand'));
-const transformBtn = document.getElementById('transformBtn');
-if(transformBtn) transformBtn.addEventListener('click', () => setToolMode('select'));
-const lassoBtn = document.getElementById('lassoBtn');
-if(lassoBtn) {
-    lassoBtn.addEventListener('click', function() {
-        if (currentToolMode === 'lasso') {
-            setToolMode('select');
-        } else {
-            setToolMode('lasso');
-        }
-    });
-}
-// Các phần zoom/pan/upload/fit surface không thay đổi và vẫn được giữ nguyên
-// ... (Phần code này đã được tối ưu và bỏ qua để giữ cho phản hồi ngắn gọn hơn) ...
-
-// ========== CÁC CÔNG CỤ KHÁC ==========
-const removeBtn = document.getElementById('removeBtn');
-if(removeBtn) {
-    removeBtn.addEventListener('click', function() {
-        if (currentToolMode === 'lasso' && lassoPoints.length >= 3) {
-            deleteLassoArea();
-        } else {
-            const activeObj = canvas.getActiveObject();
-            if (activeObj && activeObj !== mockupImage) {
-                canvas.remove(activeObj);
-                updateStatus('Đã xóa đối tượng');
-                updateSelectedObject();
-                saveToHistory();
-            }
-        }
-    });
-}
-
-const bringFrontBtn = document.getElementById('bringFrontBtn');
-if(bringFrontBtn) {
-    bringFrontBtn.addEventListener('click', function() {
-        const activeObj = canvas.getActiveObject();
-        if (activeObj) {
-            activeObj.bringToFront();
-            canvas.renderAll();
-            updateStatus('Đã đưa lên lớp trên');
-            saveToHistory();
-        }
-    });
-}
-
-const sendBackBtn = document.getElementById('sendBackBtn');
-if(sendBackBtn) {
-    sendBackBtn.addEventListener('click', function() {
-        const activeObj = canvas.getActiveObject();
-        if (activeObj && activeObj !== mockupImage) {
-            activeObj.sendToBack();
-            if (mockupImage) mockupImage.sendToBack();
-            canvas.renderAll();
-            updateStatus('Đã đưa xuống lớp dưới');
-            saveToHistory();
-        }
-    });
-}
-
-const undoBtn = document.getElementById('undoBtn');
-if(undoBtn) {
-    undoBtn.addEventListener('click', function() {
-        if (historyIndex > 0) {
-            historyIndex--;
-            canvas.loadFromJSON(history[historyIndex], function() {
-                canvas.renderAll();
-                updateSelectedObject();
-                updateStatus(`Đã undo (${historyIndex}/${history.length-1})`);
-                updateHistoryButtons();
-                updateHistoryStatus();
-            });
-        }
-    });
-}
-
-const redoBtn = document.getElementById('redoBtn');
-if(redoBtn) {
-    redoBtn.addEventListener('click', function() {
-        if (historyIndex < history.length - 1) {
-            historyIndex++;
-            canvas.loadFromJSON(history[historyIndex], function() {
-                canvas.renderAll();
-                updateSelectedObject();
-                updateStatus(`Đã redo (${historyIndex}/${history.length-1})`);
-                updateHistoryButtons();
-                updateHistoryStatus();
-            });
-        }
-    });
-}
-
-// ========== PHÍM TẮT (Đã cập nhật Lasso) ==========
-document.addEventListener('keydown', function(e) {
-    if (e.key.toLowerCase() === 'h' && currentToolMode !== 'hand') { 
-        e.preventDefault(); 
-        setToolMode('hand');
-    } else if (e.key === 'Escape' || (e.ctrlKey && e.key === 't')) { 
-        e.preventDefault(); 
-        setToolMode('select');
-    } else if (e.key.toLowerCase() === 'd') { 
-        e.preventDefault(); 
-        if (currentToolMode === 'draw') {
-            setToolMode('select');
-        } else {
-            setToolMode('draw');
-        }
-    } else if (e.key.toLowerCase() === 'l') { 
-        e.preventDefault(); 
-        if (currentToolMode === 'lasso') {
-            setToolMode('select');
-        } else {
-            setToolMode('lasso');
-        }
-    } else if (e.key.toLowerCase() === 'w') { 
-        e.preventDefault(); 
-        applyAutoWarp();
-    } else if (e.ctrlKey && e.key === 'z') { 
-        e.preventDefault(); 
-        const undoBtn = document.getElementById('undoBtn');
-        if(undoBtn) undoBtn.click(); 
-    } else if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) { 
-        e.preventDefault(); 
-        const redoBtn = document.getElementById('redoBtn');
-        if(redoBtn) redoBtn.click(); 
-    } else if (e.key === 'Enter' && currentToolMode === 'lasso' && isLassoMode) { // Xử lý Enter trong Lasso
-        e.preventDefault();
-        finishLassoSelection();
-    } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault(); 
-        if (currentToolMode === 'lasso' && lassoPoints.length >= 3) {
-            deleteLassoArea();
-        } else {
-            const removeBtn = document.getElementById('removeBtn');
-            if(removeBtn) removeBtn.click(); 
-        }
-    }
-});
-
-canvas.on('selection:created', updateSelectedObject);
-canvas.on('selection:updated', updateSelectedObject);
-canvas.on('selection:cleared', updateSelectedObject);
-
-function updateSelectedObject() {
-    const activeObj = canvas.getActiveObject();
-    const selectedObjElement = document.getElementById('selectedObj');
-    
-    if (activeObj && activeObj !== mockupImage) {
-        if(selectedObjElement) selectedObjElement.textContent = activeObj.name === 'texture' ? 'Vật Liệu' : 'Đã chọn';
-        if(selectedObjElement) selectedObjElement.style.color = '#4ecdc4';
-    } else {
-        if(selectedObjElement) selectedObjElement.textContent = 'Không có';
-        if(selectedObjElement) selectedObjElement.style.color = '#ff6b6b';
-    }
-}
-
-function updateStatus(message) {
-    const statusText = document.getElementById('statusText');
-    if(statusText) statusText.textContent = message;
-}
-
-// ========== KHỞI TẠO ==========
-function updateToolButtons() {
-    document.querySelectorAll('.tools .tool-btn').forEach(btn => {
-        btn.classList.remove('active-tool');
-    });
-    
-    if (currentToolMode === 'hand') {
-        const handToolBtn = document.getElementById('handToolBtn');
-        if(handToolBtn) handToolBtn.classList.add('active-tool');
-    } else if (currentToolMode === 'draw') {
-        const drawBtn = document.getElementById('drawBtn');
-        if(drawBtn) drawBtn.classList.add('active-tool');
-    } else if (currentToolMode === 'lasso') {
-        const lassoBtn = document.getElementById('lassoBtn');
-        if(lassoBtn) lassoBtn.classList.add('active-tool');
-    } else {
-        const transformBtn = document.getElementById('transformBtn');
-        if(transformBtn) transformBtn.classList.add('active-tool');
-    }
-}
-
-const drawingColorElement = document.getElementById('drawingColor');
-if(drawingColorElement) drawingColorElement.style.background = drawingBrush.color;
-
-setToolMode('select');
-updateZoomDisplay();
-updateStatus('Sẵn sàng - Tải mockup và ảnh vật liệu để bắt đầu');
-updateSelectedObject();
-updateHistoryButtons();
-updateHistoryStatus();
-
-setTimeout(() => {
-    saveToHistory();
-}, 100);
+  // initial guidance
+  updateStatus('Tải mockup và texture để bắt đầu. Sử dụng Lasso để chọn vùng và xóa (feather), Warp Auto để tạo effect.');
+  </script>
+</body>
+</html>
