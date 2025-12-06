@@ -767,9 +767,9 @@
                         <i class="fas fa-crop-alt"></i>
                         <span>Fit Bề Mặt</span>
                     </button>
-                    <button class="tool-btn" id="warpSurfaceBtn">
+                    <button class="tool-btn" id="warpAutoBtn" title="Warp tự động (W)">
                         <i class="fas fa-wave-square"></i>
-                        <span>Warp Bề Mặt</span>
+                        <span>Warp Auto</span>
                     </button>
                     <button class="tool-btn" id="removeBtn">
                         <i class="fas fa-trash"></i>
@@ -863,102 +863,13 @@
                 </div>
                 <div class="canvas-info-item">
                     <i class="fas fa-cut"></i>
-                    <span>Nhấn <strong>L</strong> để dùng Laso Tool, vẽ vùng và nhấn <strong>Delete</strong> để xóa</span>
+                    <span>Nhấn <strong>L</strong> để dùng Laso Tool, vẽ vùng và double-click để kết thúc</span>
                 </div>
                 <div class="canvas-info-item">
                     <i class="fas fa-check-circle"></i>
-                    <span>Nhấn <strong>Hoàn Tất Tất Cả</strong> để tự động tạo Displacement Map và Warp</span>
+                    <span>Nhấn <strong>W</strong> để Warp tự động, <strong>Hoàn Tất Tất Cả</strong> để xuất file</span>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- WARP MODAL -->
-    <div class="overlay" id="warpOverlay"></div>
-    <div class="warp-modal" id="warpModal">
-        <div class="modal-header">
-            <h3 class="save-header">
-                <i class="fas fa-wave-square"></i> Warp Bề Mặt Nâng Cao
-            </h3>
-            <button class="close-modal-btn" id="closeWarpModal" title="Đóng">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="warp-controls">
-             <div class="warp-control displacement-control">
-                <div class="control-label">
-                    <span>Cường độ Displacement Map</span>
-                    <span class="control-value" id="dispIntensityValue">0</span>
-                </div>
-                <input type="range" min="0" max="100" value="0" class="warp-slider" id="dispIntensitySlider">
-            </div>
-            
-            <div class="warp-control">
-                <div class="control-label">
-                    <span>Độ Cong X (Skew)</span>
-                    <span class="control-value" id="warpXValue">0</span>
-                </div>
-                <input type="range" min="-50" max="50" value="0" class="warp-slider" id="warpXSlider">
-            </div>
-            
-            <div class="warp-control">
-                <div class="control-label">
-                    <span>Độ Cong Y (Skew)</span>
-                    <span class="control-value" id="warpYValue">0</span>
-                </div>
-                <input type="range" min="-50" max="50" value="0" class="warp-slider" id="warpYSlider">
-            </div>
-            
-            <div class="warp-control">
-                <div class="control-label">
-                    <span>Độ Lồi (Bulge)</span>
-                    <span class="control-value" id="bulgeValue">0</span>
-                </div>
-                <input type="range" min="0" max="100" value="0" class="warp-slider" id="bulgeSlider">
-            </div>
-            
-            <div class="warp-control">
-                <div class="control-label">
-                    <span>Độ Lõm (Pinch)</span>
-                    <span class="control-value" id="pinchValue">0</span>
-                </div>
-                <input type="range" min="0" max="100" value="0" class="warp-slider" id="pinchSlider">
-            </div>
-            
-             <div class="warp-control">
-                <div class="control-label">
-                    <span>Gợn Sóng / Xoắn</span>
-                    <span class="control-value" id="waveValue">0</span>
-                </div>
-                <input type="range" min="0" max="100" value="0" class="warp-slider" id="waveSlider">
-            </div>
-            
-            <div class="warp-control">
-                <div class="control-label">
-                    <span>Độ Hòa Trộn (Blend)</span>
-                    <span class="control-value" id="blendValue">50</span>
-                </div>
-                <input type="range" min="0" max="100" value="50" class="warp-slider" id="blendSlider">
-            </div>
-        </div>
-        
-        <div class="warp-presets">
-            <button class="warp-preset" data-preset="curve">Bề Mặt Cong</button>
-            <button class="warp-preset" data-preset="displacement">Warp Bằng Map</button>
-            <button class="warp-preset" data-preset="bulge">Phồng Lên</button>
-            <button class="warp-preset" data-preset="pinch">Lõm Xuống</button>
-            <button class="warp-preset" data-preset="fold">Nếp Gấp</button>
-            <button class="warp-preset" data-preset="reset">Reset</button>
-        </div>
-        
-        <div class="modal-buttons">
-            <button class="modal-btn secondary" id="cancelWarp">
-                <i class="fas fa-times"></i> Hủy
-            </button>
-            <button class="modal-btn primary complete" id="applyWarp">
-                <i class="fas fa-check"></i> Hoàn Thành
-            </button>
         </div>
     </div>
 
@@ -1158,13 +1069,12 @@
             opacity: 1.0
         };
         
-        // ========== BIẾN CHO CÔNG CỤ LASO ==========
+        // ========== BIẾN CHO CÔNG CỤ LASO CẢI TIẾN ==========
         let isLassoMode = false;
         let lassoPoints = [];
-        let lassoPreview = null;
-        let lassoLines = [];
-        let lassoDots = [];
-
+        let lassoPath = null;
+        let isDrawingLasso = false;
+        
         // ========== UNDO/REDO SYSTEM ==========
         let history = [];
         let historyIndex = -1;
@@ -1279,152 +1189,31 @@
             saveToHistory();
         });
 
-        // ========== CÔNG CỤ LASO (VẼ VÙNG VÀ XÓA) ==========
+        // ========== CÔNG CỤ LASO CẢI TIẾN ==========
         function activateLassoMode() {
-            const activeObj = canvas.getActiveObject();
-            if (!activeObj || activeObj.name !== 'texture') {
-                updateStatus('Vui lòng chọn một vật liệu (texture) để sử dụng Laso Tool');
-                return;
-            }
-            
             currentToolMode = 'lasso';
             isLassoMode = true;
+            isDrawingLasso = false;
             lassoPoints = [];
-            lassoLines = [];
-            lassoDots = [];
             
             canvas.selection = false;
-            updateToolButtons();
-            
             canvas.defaultCursor = 'crosshair';
             canvas.hoverCursor = 'crosshair';
             
-            canvas.on('mouse:down', startLasso);
-            canvas.on('mouse:move', drawLasso);
-            canvas.on('mouse:up', endLasso);
-            
-            updateStatus('Laso Tool: Click để bắt đầu vẽ vùng, Double-click để đóng vùng, Delete để xóa phần trong');
+            updateToolButtons();
+            updateStatus('Laso Tool: Click và kéo để vẽ vùng chọn, Double-click để kết thúc');
         }
 
-        function startLasso(event) {
+        function startLassoDrawing(event) {
             if (!isLassoMode) return;
             
+            isDrawingLasso = true;
             const pointer = canvas.getPointer(event.e);
-            const target = canvas.findTarget(event.e);
-            const activeObj = canvas.getActiveObject();
-            
-            if (target !== activeObj) {
-                updateStatus('Vui lòng vẽ trên vật liệu đã chọn');
-                return;
-            }
             
             lassoPoints = [{x: pointer.x, y: pointer.y}];
             
-            // Tạo điểm đầu tiên
-            const dot = new fabric.Circle({
-                left: pointer.x - 3,
-                top: pointer.y - 3,
-                radius: 3,
-                fill: '#ff0000',
-                selectable: false,
-                evented: false
-            });
-            
-            canvas.add(dot);
-            lassoDots.push(dot);
-        }
-
-        function drawLasso(event) {
-            if (!isLassoMode || lassoPoints.length === 0) return;
-            
-            const pointer = canvas.getPointer(event.e);
-            
-            // Xóa đường vẽ cũ
-            lassoLines.forEach(line => canvas.remove(line));
-            lassoLines = [];
-            
-            // Vẽ đường từ điểm đầu đến điểm hiện tại
-            for (let i = 0; i < lassoPoints.length - 1; i++) {
-                const line = new fabric.Line([
-                    lassoPoints[i].x, lassoPoints[i].y,
-                    lassoPoints[i+1].x, lassoPoints[i+1].y
-                ], {
-                    stroke: '#ff0000',
-                    strokeWidth: 2,
-                    selectable: false,
-                    evented: false
-                });
-                canvas.add(line);
-                lassoLines.push(line);
-            }
-            
-            // Vẽ đường từ điểm cuối đến vị trí chuột hiện tại
-            const lastPoint = lassoPoints[lassoPoints.length - 1];
-            const currentLine = new fabric.Line([
-                lastPoint.x, lastPoint.y,
-                pointer.x, pointer.y
-            ], {
-                stroke: '#ff0000',
-                strokeWidth: 2,
-                strokeDashArray: [5, 5],
-                selectable: false,
-                evented: false
-            });
-            canvas.add(currentLine);
-            lassoLines.push(currentLine);
-            
-            canvas.renderAll();
-        }
-
-        function endLasso(event) {
-            if (!isLassoMode || lassoPoints.length === 0) return;
-            
-            const pointer = canvas.getPointer(event.e);
-            
-            // Thêm điểm mới
-            lassoPoints.push({x: pointer.x, y: pointer.y});
-            
-            // Tạo điểm mới
-            const dot = new fabric.Circle({
-                left: pointer.x - 3,
-                top: pointer.y - 3,
-                radius: 3,
-                fill: '#ff0000',
-                selectable: false,
-                evented: false
-            });
-            
-            canvas.add(dot);
-            lassoDots.push(dot);
-            
-            // Nếu double-click, đóng vùng
-            if (event.e.detail === 2 && lassoPoints.length > 2) {
-                finishLassoSelection();
-            }
-        }
-
-        function finishLassoSelection() {
-            if (lassoPoints.length < 3) return;
-            
-            // Đóng vùng (nối điểm cuối với điểm đầu)
-            const firstPoint = lassoPoints[0];
-            const lastPoint = lassoPoints[lassoPoints.length - 1];
-            
-            const closingLine = new fabric.Line([
-                lastPoint.x, lastPoint.y,
-                firstPoint.x, firstPoint.y
-            ], {
-                stroke: '#ff0000',
-                strokeWidth: 2,
-                selectable: false,
-                evented: false
-            });
-            
-            canvas.add(closingLine);
-            lassoLines.push(closingLine);
-            
-            // Tạo polygon preview
-            lassoPreview = new fabric.Polygon(lassoPoints, {
+            // Tạo path mới
+            lassoPath = new fabric.Path(`M ${pointer.x} ${pointer.y}`, {
                 fill: 'rgba(255, 0, 0, 0.2)',
                 stroke: '#ff0000',
                 strokeWidth: 2,
@@ -1432,14 +1221,63 @@
                 evented: false
             });
             
-            canvas.add(lassoPreview);
+            canvas.add(lassoPath);
+        }
+
+        function continueLassoDrawing(event) {
+            if (!isLassoMode || !isDrawingLasso) return;
+            
+            const pointer = canvas.getPointer(event.e);
+            lassoPoints.push({x: pointer.x, y: pointer.y});
+            
+            // Cập nhật path với đường cong mượt
+            let pathString = `M ${lassoPoints[0].x} ${lassoPoints[0].y}`;
+            
+            for (let i = 1; i < lassoPoints.length; i++) {
+                // Sử dụng đường cong quadratic để mượt hơn
+                const prevPoint = lassoPoints[i-1];
+                const currentPoint = lassoPoints[i];
+                const controlX = (prevPoint.x + currentPoint.x) / 2;
+                const controlY = (prevPoint.y + currentPoint.y) / 2;
+                
+                pathString += ` Q ${prevPoint.x} ${prevPoint.y} ${controlX} ${controlY}`;
+            }
+            
+            lassoPath.set({ path: pathString });
             canvas.renderAll();
+        }
+
+        function endLassoDrawing(event) {
+            if (!isLassoMode || !isDrawingLasso) return;
+            
+            if (event.e.detail === 2) { // Double-click
+                finishLassoSelection();
+            }
+        }
+
+        function finishLassoSelection() {
+            if (lassoPoints.length < 3) return;
+            
+            // Đóng path bằng cách nối điểm cuối với điểm đầu
+            const firstPoint = lassoPoints[0];
+            const lastPoint = lassoPoints[lassoPoints.length - 1];
+            
+            let pathString = lassoPath.path.join(' ');
+            pathString += ` L ${firstPoint.x} ${firstPoint.y} Z`;
+            
+            lassoPath.set({ 
+                path: pathString,
+                fill: 'rgba(255, 0, 0, 0.3)'
+            });
+            
+            canvas.renderAll();
+            isDrawingLasso = false;
             
             updateStatus('Đã tạo vùng chọn. Nhấn Delete để xóa phần bên trong vùng này.');
         }
 
         function deleteLassoArea() {
-            if (!isLassoMode || !lassoPreview || lassoPoints.length < 3) {
+            if (!isLassoMode || !lassoPath || lassoPoints.length < 3) {
                 updateStatus('Vui lòng tạo vùng chọn trước khi xóa');
                 return;
             }
@@ -1476,15 +1314,27 @@
             );
             ctx.moveTo(firstTransformed.x, firstTransformed.y);
             
-            // Các điểm tiếp theo
+            // Vẽ đường cong qua các điểm
             for (let i = 1; i < lassoPoints.length; i++) {
-                const transformed = fabric.util.transformPoint(
+                const prevTransformed = fabric.util.transformPoint(
+                    new fabric.Point(lassoPoints[i-1].x, lassoPoints[i-1].y),
+                    invertedMatrix
+                );
+                const currentTransformed = fabric.util.transformPoint(
                     new fabric.Point(lassoPoints[i].x, lassoPoints[i].y),
                     invertedMatrix
                 );
-                ctx.lineTo(transformed.x, transformed.y);
+                
+                const controlX = (prevTransformed.x + currentTransformed.x) / 2;
+                const controlY = (prevTransformed.y + currentTransformed.y) / 2;
+                
+                ctx.quadraticCurveTo(
+                    prevTransformed.x, prevTransformed.y,
+                    controlX, controlY
+                );
             }
             
+            // Đóng path
             ctx.closePath();
             
             // Xóa phần bên trong path
@@ -1524,24 +1374,159 @@
         }
 
         function cleanupLasso() {
-            // Xóa tất cả các đối tượng lasso
-            lassoLines.forEach(line => canvas.remove(line));
-            lassoDots.forEach(dot => canvas.remove(dot));
-            if (lassoPreview) {
-                canvas.remove(lassoPreview);
+            if (lassoPath) {
+                canvas.remove(lassoPath);
+                lassoPath = null;
             }
             
             lassoPoints = [];
-            lassoLines = [];
-            lassoDots = [];
-            lassoPreview = null;
+            isDrawingLasso = false;
             
             canvas.defaultCursor = 'default';
             canvas.hoverCursor = 'move';
+        }
+
+        // ========== WARP TỰ ĐỘNG ==========
+        function applyAutoWarp() {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj || activeObj.name !== 'texture') {
+                updateStatus('Vui lòng chọn một vật liệu để warp tự động');
+                return;
+            }
             
-            canvas.off('mouse:down', startLasso);
-            canvas.off('mouse:move', drawLasso);
-            canvas.off('mouse:up', endLasso);
+            // Kiểm tra nếu có displacement map
+            if (!displacementMap) {
+                updateStatus('Đang tạo displacement map tự động...');
+                createAutoDisplacementMap().then(() => {
+                    applyWarpWithSettings(activeObj, {
+                        dispIntensity: 40,
+                        warpX: 5,
+                        warpY: 5,
+                        bulge: 15,
+                        pinch: 0,
+                        wave: 0,
+                        blend: 60
+                    });
+                });
+            } else {
+                applyWarpWithSettings(activeObj, {
+                    dispIntensity: 40,
+                    warpX: 5,
+                    warpY: 5,
+                    bulge: 15,
+                    pinch: 0,
+                    wave: 0,
+                    blend: 60
+                });
+            }
+        }
+
+        function createAutoDisplacementMap() {
+            return new Promise((resolve, reject) => {
+                if (!mockupImage) {
+                    reject(new Error('Chưa có mockup'));
+                    return;
+                }
+                
+                const mockupElement = mockupImage.getElement();
+                const tempCanvas = document.createElement('canvas');
+                const ctx = tempCanvas.getContext('2d');
+                
+                tempCanvas.width = 400;
+                tempCanvas.height = 300;
+                
+                ctx.drawImage(mockupElement, 0, 0, tempCanvas.width, tempCanvas.height);
+                
+                // Chuyển sang đen trắng và tăng độ tương phản
+                const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    
+                    // Tính luminance và tăng tương phản
+                    let luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+                    luminance = (luminance - 128) * 1.5 + 128;
+                    luminance = Math.max(0, Math.min(255, luminance));
+                    
+                    data[i] = luminance;
+                    data[i + 1] = luminance;
+                    data[i + 2] = luminance;
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+                
+                // Áp dụng blur nhẹ
+                ctx.filter = 'blur(3px)';
+                ctx.drawImage(tempCanvas, 0, 0);
+                ctx.filter = 'none';
+                
+                // Tạo displacement map
+                const img = new Image();
+                img.onload = function() {
+                    displacementMap = img;
+                    updateStatus('Đã tạo Displacement Map tự động');
+                    resolve();
+                };
+                img.src = tempCanvas.toDataURL();
+            });
+        }
+
+        function applyWarpWithSettings(obj, settings) {
+            const imgElement = obj.getElement();
+            
+            try {
+                const fxCanvas = fx.canvas();
+                const texture = fxCanvas.texture(imgElement);
+                
+                fxCanvas.draw(texture).update();
+                
+                if (settings.dispIntensity > 0 && displacementMap) {
+                    const displacementTexture = fxCanvas.texture(displacementMap);
+                    fxCanvas.heightField(displacementTexture, settings.dispIntensity / 100 * 0.15).update();
+                }
+                
+                const center = [0.5, 0.5];
+                if (settings.bulge > 0) {
+                    fxCanvas.bulgePinch(center[0], center[1], settings.bulge / 100 * 0.5, 0.9).update();
+                }
+                
+                const warpedUrl = fxCanvas.toDataURL();
+                
+                fabric.Image.fromURL(warpedUrl, function(warpedImg) {
+                    warpedImg.set({
+                        left: obj.left,
+                        top: obj.top,
+                        scaleX: obj.scaleX,
+                        scaleY: obj.scaleY,
+                        angle: obj.angle,
+                        skewX: obj.skewX + settings.warpX * 0.3,
+                        skewY: obj.skewY + settings.warpY * 0.3,
+                        globalCompositeOperation: 'multiply',
+                        opacity: Math.max(0.7, 1 - (1 - settings.blend/100) * 0.3),
+                        hasControls: true,
+                        hasBorders: true,
+                        cornerStyle: 'circle',
+                        cornerColor: '#4ecdc4',
+                        borderColor: '#4ecdc4',
+                        cornerSize: 12,
+                        transparentCorners: false,
+                        name: 'texture'
+                    });
+                    
+                    canvas.remove(obj);
+                    canvas.add(warpedImg);
+                    canvas.setActiveObject(warpedImg);
+                    canvas.renderAll();
+                    saveToHistory();
+                    updateStatus('Đã áp dụng warp tự động thành công!');
+                });
+            } catch (e) {
+                updateStatus('Lỗi Warp: Vui lòng kiểm tra console.');
+                console.error('Warp Error:', e);
+            }
         }
 
         // ========== CHUYỂN ĐỔI CÔNG CỤ ==========
@@ -1551,6 +1536,9 @@
                 deactivateDrawingMode();
             } else if (currentToolMode === 'lasso') {
                 cleanupLasso();
+                canvas.off('mouse:down');
+                canvas.off('mouse:move');
+                canvas.off('mouse:up');
             }
             
             currentToolMode = mode;
@@ -1571,6 +1559,11 @@
             } else if (mode === 'lasso') {
                 document.getElementById('lassoBtn').classList.add('active-tool');
                 activateLassoMode();
+                
+                // Thiết lập sự kiện cho laso
+                canvas.on('mouse:down', startLassoDrawing);
+                canvas.on('mouse:move', continueLassoDrawing);
+                canvas.on('mouse:up', endLassoDrawing);
             } else {
                 document.getElementById('transformBtn').classList.add('active-tool');
                 canvas.selection = true;
@@ -1590,6 +1583,7 @@
                 setToolMode('lasso');
             }
         });
+        document.getElementById('warpAutoBtn').addEventListener('click', applyAutoWarp);
 
         // ========== ZOOM & PAN ==========
         let isPanning = false;
@@ -1856,7 +1850,7 @@
                 // 1. Tạo displacement map nếu chưa có
                 if (!displacementMap && mockupImage) {
                     updateStatus('Đang tạo Displacement Map...');
-                    await createDisplacementMap();
+                    await createAutoDisplacementMap();
                 }
                 
                 // 2. Áp dụng warp cho tất cả vật liệu
@@ -1867,113 +1861,30 @@
                     
                     for (const texture of textureObjects) {
                         canvas.setActiveObject(texture);
-                        applyQuickWarp(texture);
+                        applyWarpWithSettings(texture, {
+                            dispIntensity: 40,
+                            warpX: 5,
+                            warpY: 5,
+                            bulge: 15,
+                            pinch: 0,
+                            wave: 0,
+                            blend: 60
+                        });
                     }
                 }
                 
-                // 3. Mở modal save
+                // 3. Mở modal save sau 1 giây
                 setTimeout(() => {
                     document.getElementById('saveModal').classList.add('active');
                     document.getElementById('saveOverlay').classList.add('active');
                     updateStatus('Hoàn tất! Vui lòng đặt tên file và tải xuống.');
-                }, 500);
+                }, 1000);
                 
             } catch (error) {
                 updateStatus('Lỗi khi hoàn tất: ' + error.message);
                 console.error(error);
             }
         });
-
-        function applyQuickWarp(texture) {
-            // Áp dụng warp mặc định
-            const imgElement = texture.getElement();
-            
-            try {
-                const fxCanvas = fx.canvas();
-                const fxTexture = fxCanvas.texture(imgElement);
-                
-                fxCanvas.draw(fxTexture).update();
-                
-                if (displacementMap) {
-                    const displacementTexture = fxCanvas.texture(displacementMap);
-                    fxCanvas.heightField(displacementTexture, 0.1).update();
-                }
-                
-                const warpedUrl = fxCanvas.toDataURL();
-                
-                fabric.Image.fromURL(warpedUrl, function(warpedImg) {
-                    warpedImg.set({
-                        left: texture.left,
-                        top: texture.top,
-                        scaleX: texture.scaleX,
-                        scaleY: texture.scaleY,
-                        angle: texture.angle,
-                        globalCompositeOperation: 'multiply',
-                        opacity: 0.9,
-                        hasControls: true,
-                        hasBorders: true,
-                        cornerStyle: 'circle',
-                        cornerColor: '#4ecdc4',
-                        borderColor: '#4ecdc4',
-                        cornerSize: 12,
-                        transparentCorners: false,
-                        name: 'texture'
-                    });
-                    
-                    canvas.remove(texture);
-                    canvas.add(warpedImg);
-                    canvas.renderAll();
-                });
-            } catch (e) {
-                console.warn('Không thể áp dụng warp:', e);
-            }
-        }
-
-        async function createDisplacementMap() {
-            return new Promise((resolve, reject) => {
-                if (!mockupImage) {
-                    reject(new Error('Chưa có mockup'));
-                    return;
-                }
-                
-                const mockupElement = mockupImage.getElement();
-                const tempCanvas = document.createElement('canvas');
-                const ctx = tempCanvas.getContext('2d');
-                
-                tempCanvas.width = 400;
-                tempCanvas.height = 300;
-                
-                ctx.drawImage(mockupElement, 0, 0, tempCanvas.width, tempCanvas.height);
-                
-                // Chuyển sang đen trắng
-                const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
-                const data = imageData.data;
-                
-                for (let i = 0; i < data.length; i += 4) {
-                    const r = data[i];
-                    const g = data[i + 1];
-                    const b = data[i + 2];
-                    
-                    // Tính luminance
-                    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-                    
-                    data[i] = luminance;
-                    data[i + 1] = luminance;
-                    data[i + 2] = luminance;
-                }
-                
-                ctx.putImageData(imageData, 0, 0);
-                
-                // Tạo displacement map
-                const img = new Image();
-                img.onload = function() {
-                    displacementMap = img;
-                    updateStatus('Đã tạo Displacement Map tự động');
-                    resolve();
-                };
-                img.src = tempCanvas.toDataURL();
-            });
-        }
 
         // ========== LƯU/XUẤT FILE ==========
         const saveModal = document.getElementById('saveModal');
@@ -2047,7 +1958,7 @@
 
         // ========== CÁC CÔNG CỤ KHÁC ==========
         document.getElementById('removeBtn').addEventListener('click', function() {
-            if (currentToolMode === 'lasso' && lassoPreview) {
+            if (currentToolMode === 'lasso' && lassoPath) {
                 deleteLassoArea();
             } else {
                 const activeObj = canvas.getActiveObject();
@@ -2128,6 +2039,9 @@
                 } else {
                     setToolMode('lasso');
                 }
+            } else if (e.key.toLowerCase() === 'w') { 
+                e.preventDefault(); 
+                applyAutoWarp();
             } else if (e.ctrlKey && e.key === 'z') { 
                 e.preventDefault(); 
                 document.getElementById('undoBtn').click(); 
