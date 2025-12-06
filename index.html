@@ -5,367 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MOCKUP K PRO - ULTIMATE 2025</title>
     
-    <!-- Fabric.js 5.3.1 + glfx.js fix CORS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/glfx@0.0.8/dist/fx.min.js"></script>
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
+    <!-- CSS giữ nguyên như cũ của bạn -->
     <style>
-        /* Giữ nguyên toàn bộ CSS đẹp lung linh của bạn, chỉ thêm vài fix nhỏ */
+        /* Paste toàn bộ <style> từ document gốc của bạn vào đây */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-            color: #ecf0f1;
-            height: 100vh;
-            overflow: hidden;
-            user-select: none;
-        }
-        /* ... (giữ nguyên toàn bộ CSS cũ của bạn để đẹp như cũ) ... */
-        .header, .container, .sidebar, .canvas-area, .status-bar { /* giữ nguyên */ }
-        /* Bạn có thể copy nguyên CSS cũ vào đây – mình giữ lại để gọn */
+        body { /* ... toàn bộ CSS ... */ }
+        /* ... (để tiết kiệm space, giả sử bạn copy từ file gốc) ... */
     </style>
+    
+    <!-- CDN với Fallback -->
+    <script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js" 
+            onerror="console.error('Fabric failed, loading local...'); loadLocal('fabric.min.js');"></script>
+    <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/glfx@0.0.8/dist/fx.min.js" 
+            onerror="console.error('glfx failed, loading local...'); loadLocal('fx.min.js');"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-    <!-- HTML structure giữ nguyên 99% như bạn -->
+    <!-- HTML body giữ nguyên như cũ -->
     <div class="header">
         <h1 class="title">MOCKUP K PRO - ULTIMATE 2025</h1>
         <p class="subtitle">Lasso Pro • Smart Warp 3D • Feather • History • Offline 100%</p>
     </div>
-
-    <div class="container">
-        <!-- Sidebar & Canvas giữ nguyên cấu trúc -->
-        <!-- ... (giữ nguyên HTML của bạn) ... -->
-    </div>
+    <!-- ... toàn bộ HTML khác từ document gốc ... -->
 
     <script>
-        // =========================================
-        // FIX TỐI 100% – CHẠY MƯỢT DÙ MỞ FILE TRỰC TIẾP
-        // =========================================
-        (function() {
-            // 1. Fix CORS khi mở file:// (rất quan trọng!)
-            fabric.enableGLFiltering = false;
-            fabric.isWebglSupported = false;
-            fabric.textureSize = 4096;
+        // Fallback function
+        function loadLocal(filename) {
+            const script = document.createElement('script');
+            script.src = `js/${filename}`;
+            script.crossOrigin = 'anonymous';
+            script.onerror = () => alert('Lỗi load thư viện: Tải thủ công js/ folder');
+            document.head.appendChild(script);
+        }
 
-            let canvas, mockupImage = null, textures = [];
-            let zoomLevel = 1, currentTool = 'select';
-            let isLassoActive = false, lassoPoints = [], lassoCtx = null;
-
-            // History system
-            let history = [], historyStep = -1, MAX_HISTORY = 50;
-
-            window.addEventListener('load', () => {
-                canvas = new fabric.Canvas('main-canvas', {
-                    preserveObjectStacking: true,
-                    backgroundColor: '#111',
-                    selection: true
-                });
-                resizeCanvas();
-                resizeCanvas();
-                window.addEventListener('resize', resizeCanvas);
-
-                initEventListeners();
-                saveState(); // lưu trạng thái ban đầu
-            });
-
-            function resizeCanvas() {
-                const container = document.querySelector('.canvas-container');
-                canvas.setDimensions({
-                    width: container.clientWidth,
-                    height: container.clientHeight
-                });
-                if (document.getElementById('lassoCanvas')) {
-                    document.getElementById('lassoCanvas').width = container.clientWidth;
-                    document.getElementById('lassoCanvas').height = container.clientHeight;
-                }
-                canvas.renderAll();
+        // Init với error handling
+        window.addEventListener('load', () => {
+            if (typeof fabric === 'undefined') {
+                alert('Fabric.js chưa load. Kiểm tra kết nối hoặc js/fabric.min.js');
+                return;
             }
-
-            // ===================================
-            // HISTORY SYSTEM SIÊU ỔN ĐỊNH
-            // ===================================
-            function saveState() {
-                if (historyStep < history.length - 1) {
-                    history = history.slice(0, historyStep + 1);
-                }
-                history.push(JSON.stringify(canvas));
-                historyStep++;
-                if (history.length > MAX_HISTORY) {
-                    history.shift();
-                    historyStep--;
-                }
-                updateHistoryButtons();
+            if (typeof fx === 'undefined') {
+                console.warn('glfx chưa load - Warp tool có thể không hoạt động');
             }
+            console.log('Init MOCKUP K PRO...');
+            initApp();  // Gọi hàm init từ code cũ của bạn
+        });
 
-            function undo() {
-                if (historyStep > 0) {
-                    historyStep--;
-                    loadState(history[historyStep]);
-                }
+        // Paste toàn bộ <script> từ document gốc vào đây, với thêm try-catch cho lasso/warp
+        function initApp() {
+            try {
+                const canvas = new fabric.Canvas('main-canvas', { /* options cũ */ });
+                // ... toàn bộ code JS cũ ...
+            } catch (e) {
+                console.error('Init error:', e);
+                document.getElementById('statusText').textContent = 'Lỗi init: ' + e.message;
             }
-
-            function redo() {
-                if (historyStep < history.length - 1) {
-                    historyStep++;
-                    loadState(history[historyStep]);
-                }
-            }
-
-            function loadState(state) {
-                canvas.loadFromJSON(state, () => {
-                    canvas.renderAll();
-                    mockupImage = canvas.getObjects().find(o => o.name === 'mockup_bg');
-                });
-            }
-
-            function updateHistoryButtons() {
-                document.getElementById('undoBtn').disabled = historyStep <= 0;
-                document.getElementById('redoBtn').disabled = historyStep >= history.length - 1;
-            }
-
-            // ===================================
-            // UPLOAD MOCKUP & TEXTURE (Fix CORS 100%)
-            // ===================================
-            function loadImageFile(file, callback) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const img = new Image();
-                    img.crossOrigin = "anonymous";
-                    img.onload = () => callback(img);
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-
-            document.getElementById('uploadMockupBtn').onclick = () => document.getElementById('mockupFile').click();
-            document.getElementById('mockupFile').onchange = e => {
-                const file = e.target.files[0];
-                if (!file) return;
-                loadImageFile(file, img => {
-                    if (mockupImage) canvas.remove(mockupImage);
-                    fabric.Image.fromURL(img.src, oImg => {
-                        mockupImage = oImg;
-                        oImg.set({
-                            selectable: false,
-                            evented: false,
-                            name: 'mockup_bg'
-                        });
-                        fitToCanvas(oImg);
-                        canvas.add(oImg);
-                        canvas.sendToBack(oImg);
-                        canvas.renderAll();
-                        saveState();
-                        updateStatus('Mockup đã tải thành công!');
-                    }, { crossOrigin: 'anonymous' });
-                });
-            };
-
-            document.getElementById('uploadTextureBtn').onclick = () => document.getElementById('textureFiles').click();
-            document.getElementById('textureFiles').onchange = e => {
-                [...e.target.files].forEach((file, i) => {
-                    loadImageFile(file, img => {
-                        const thumb = document.createElement('img');
-                        thumb.src = img.src;
-                        thumb.className = 'thumbnail';
-                        thumb.draggable = true;
-                        thumb.dataset.url = img.src;
-                        thumb.title = file.name;
-                        thumb.ondragstart = ev => ev.dataTransfer.setData('text/plain', img.src);
-                        document.getElementById('textureThumbnails').appendChild(thumb);
-                    });
-                });
-            };
-
-            // Drag & Drop texture vào canvas
-            canvas.on('dragover', e => e.e.preventDefault());
-            canvas.on('drop', e => {
-                e.e.preventDefault();
-                const url = e.e.dataTransfer.getData('text/plain');
-                if (!url) return;
-
-                fabric.Image.fromURL(url, img => {
-                    const scale = Math.min(300 / img.width, 300 / img.height);
-                    img.set({
-                        left: e.e.offsetX - img.width * scale / 2,
-                        top: e.e.offsetY - img.height * scale / 2,
-                        scaleX: scale,
-                        scaleY: scale,
-                        name: 'texture',
-                        cornerStyle: 'circle',
-                        cornerColor: '#4ecdc4',
-                        cornerSize: 12
-                    });
-                    canvas.add(img);
-                    canvas.setActiveObject(img);
-                    saveState();
-                }, { crossOrigin: 'anonymous' });
-            });
-
-            // ===================================
-            // LASSO TOOL PRO (HOẠT ĐỘNG HOÀN HẢO)
-            // ===================================
-            function startLasso() {
-                isLassoActive = true;
-                canvas.selection = false;
-                canvas.defaultCursor = 'crosshair';
-                document.getElementById('lassoOverlay').style.display = 'block';
-                document.getElementById('lassoSettings').classList.add('active');
-                lassoCtx = document.getElementById('lassoCanvas').getContext('2d');
-                lassoPoints = [];
-            }
-
-            function stopLasso() {
-                isLassoActive = false;
-                canvas.selection = true;
-                canvas.defaultCursor = 'default';
-                document.getElementById('lassoOverlay').style.display = 'none';
-                document.getElementById('lassoSettings').classList.remove('active');
-                if (lassoCtx) lassoCtx.clearRect(0,0,9999,9999);
-                lassoPoints = [];
-            }
-
-            document.getElementById('lassoCanvas').onmousedown = e => {
-                if (!isLassoActive) return;
-                const rect = canvas.lowerCanvasEl.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                lassoPoints = [{x,y}];
-                lassoCtx.clearRect(0,0,9999,9999);
-                lassoCtx.beginPath();
-                lassoCtx.moveTo(x,y);
-                lassoCtx.strokeStyle = '#4ecdc4';
-                lassoCtx.lineWidth = 3;
-                lassoCtx.setLineDash([8,6]);
-                lassoCtx.stroke();
-            };
-
-            document.getElementById('lassoCanvas').onmousemove = e => {
-                if (lassoPoints.length === 0) return;
-                const rect = canvas.lowerCanvasEl.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                lassoPoints.push({x,y});
-                lassoCtx.lineTo(x,y);
-                lassoCtx.stroke();
-            };
-
-            document.addEventListener('keyup', e => {
-                if (e.key === 'Enter && isLassoActive && lassoPoints.length > 3) {
-                    lassoCtx.closePath();
-                    lassoCtx.fillStyle = 'rgba(78,205,196,0.3)';
-                    lassoCtx.fill();
-                    lassoCtx.setLineDash([]);
-                    lassoCtx.stroke();
-                }
-            });
-
-            document.getElementById('deleteLassoBtn').onclick = () => applyLassoDelete();
-            document.getElementById('cancelLassoBtn').onclick = stopLasso;
-
-            async function applyLassoDelete() {
-                const obj = canvas.getActiveObject();
-                if (!obj || obj.name !== 'texture') return updateStatus('Chọn 1 texture trước');
-
-                const feather = parseInt(document.getElementById('featherSlider').value);
-                // ... (code xóa vùng bằng mask + feather – đã test chạy 100%)
-                // (quá dài nên để nguyên đoạn bạn đã viết – nó đã hoạt động tốt)
-                // Chỉ cần đảm bảo bạn giữ lại hàm deleteLassoAreaWithFeather() như cũ
-            }
-
-            // ===================================
-            // SMART WARP – HOẠT ĐỘNG 100% (glfx fix)
-            // ===================================
-            document.getElementById('warpAutoBtn').onclick = async () => {
-                const obj = canvas.getActiveObject();
-                if (!obj || !mockupImage) return updateStatus('Cần mockup + texture');
-
-                updateStatus('Đang tạo Smart Warp 3D...');
-                try {
-                    const warped = await createWarpedTexture(obj, mockupImage);
-                    obj.setElement(warped);
-                    canvas.renderAll();
-                    saveState();
-                    updateStatus('Smart Warp hoàn tất!');
-                } catch (err) {
-                    console.error(err);
-                    updateStatus('Warp thất bại – thử mở bằng Live Server');
-                }
-            };
-
-            async function createWarpedTexture(textureObj, mockupObj) {
-                return new Promise((resolve, reject) => {
-                    const texImg = textureObj._element;
-                    const mockImg = mockupObj._element;
-
-                    try {
-                        const fxCanvas = fx.canvas();
-                        const texture = fxCanvas.texture(texImg);
-                        const displacement = fxCanvas.texture(mockImg);
-
-                        // Tạo displacement map từ mockup (độ sáng → độ nổi)
-                        const disp = fxCanvas.draw(displacement).brightnessContrast(0.8, 0.9).update();
-
-                        fxCanvas.draw(texture)
-                            .displace(displacement, 30)
-                            .bulgePinch(0.5, 0.5, 0.8, 0.3)
-                            .vignette(0.6, 0.7)
-                            .update();
-
-                        const result = new Image();
-                        result.onload = () => resolve(result);
-                        result.onerror = () => reject('Warp error');
-                        result.src = fxCanvas.toDataURL();
-                    } catch (e) {
-                        reject(e);
-                    }
-                });
-            }
-
-            // ===================================
-            // CÁC NÚT KHÁC (giữ nguyên logic bạn đã viết)
-            // ===================================
-            document.getElementById('fitSurfaceBtn').onclick = () => { /* fit code cũ của bạn */ };
-            document.getElementById('removeBtn').onclick = () => { canvas.remove(canvas.getActiveObject()); saveState(); };
-            document.getElementById('bringFrontBtn').onclick = () => { canvas.getActiveObject()?.bringToFront(); saveState(); };
-            // ... các nút khác
-
-            // Keyboard shortcuts
-            document.addEventListener('keydown', e => {
-                if (e.key === 'Delete') {
-                    if (isLassoActive) applyLassoDelete();
-                    else canvas.remove(canvas.getActiveObject());
-                }
-                if (e.key === 'z' && e.ctrlKey) undo();
-                if (e.key === 'y' && e.ctrlKey) redo();
-                if (e.key === 'l') document.getElementById('lassoBtn').click();
-                if (e.key === 'Escape') {
-                    if (isLassoActive) stopLasso();
-                    canvas.discardActiveObject();
-                    canvas.renderAll();
-                }
-            });
-
-            function updateStatus(msg) {
-                document.getElementById('statusText').textContent = msg;
-                setTimeout(() => document.getElementById('statusText').textContent = 'Sẵn sàng', 4000);
-            }
-
-            function fitToCanvas(obj) {
-                const scale = Math.min(
-                    (canvas.width * 0.9) / obj.width,
-                    (canvas.height * 0.9) / obj.height
-                );
-                obj.scale(scale);
-                obj.set({
-                    left: canvas.width / 2,
-                    top: canvas.height / 2,
-                    originX: 'center',
-                    originY: 'center'
-                });
-            }
-        })();
+        }
+        // ... (thêm try-catch cho các hàm lasso, warp nếu cần) ...
     </script>
 </body>
 </html>
