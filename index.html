@@ -1,460 +1,1576 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <title>MOCKUP K - Improved Lasso & Warp (Minimal)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 0; display:flex; height:100vh; }
-    #sidebar { width: 300px; padding:12px; border-right:1px solid #ddd; box-sizing:border-box; background:#fafafa; }
-    #canvas-wrap { flex:1; display:flex; align-items:center; justify-content:center; background:#eee; }
-    canvas { border:1px solid #aaa; background:white; }
-    button, input, label { display:block; margin:8px 0; }
-    .small { font-size:13px; }
-    #status { margin-top:10px; color:#333; font-size:13px; min-height:18px; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOCKUP K PRO - Enhanced Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.5.0/fabric.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/glfx.js/0.0.8/fx.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1c2a35 0%, #2c3e50 100%);
+            padding: 15px 20px;
+            text-align: center;
+            border-bottom: 3px solid #4ecdc4;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .title {
+            margin: 0;
+            font-size: 2em;
+            color: #4ecdc4;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            margin: 5px 0 0;
+            font-size: 0.95em;
+            color: #bdc3c7;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 340px;
+            background-color: #34495e;
+            padding: 15px;
+            overflow-y: auto;
+            border-right: 1px solid #2c3e50;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(44, 62, 80, 0.4);
+            border-radius: 8px;
+            border: 1px solid rgba(78, 205, 196, 0.2);
+        }
+
+        .section-title {
+            font-size: 1.1em;
+            color: #4ecdc4;
+            margin: 0 0 12px 0;
+            border-left: 4px solid #4ecdc4;
+            padding-left: 10px;
+            font-weight: 600;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4ecdc4 0%, #3aa59e 100%);
+            color: #1c2a35;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(78, 205, 196, 0.4);
+        }
+
+        .upload-btn.secondary {
+            background: linear-gradient(135deg, #3a5369 0%, #47627a 100%);
+            color: #ecf0f1;
+        }
+
+        .upload-btn.save {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .thumbnails {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .thumbnail {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 2px solid #5e7280;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .thumbnail:hover {
+            border-color: #4ecdc4;
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(78, 205, 196, 0.4);
+        }
+
+        .tools {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .tool-btn {
+            background: linear-gradient(135deg, #3a5369 0%, #2c3e50 100%);
+            color: #ecf0f1;
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            border-radius: 6px;
+            padding: 10px 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .tool-btn i {
+            font-size: 1.3em;
+            margin-bottom: 4px;
+        }
+
+        .tool-btn:hover {
+            background: linear-gradient(135deg, #4ecdc4 0%, #3aa59e 100%);
+            color: #1c2a35;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(78, 205, 196, 0.4);
+        }
+        
+        .tool-btn.active-tool {
+            background: linear-gradient(135deg, #4ecdc4 0%, #3aa59e 100%);
+            color: #1c2a35;
+            box-shadow: 0 0 15px rgba(78, 205, 196, 0.6);
+            border: 2px solid #4ecdc4;
+        }
+
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            padding: 15px;
+            position: relative;
+        }
+
+        .canvas-container {
+            flex: 1;
+            border: 2px solid #4ecdc4;
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+            background-color: #1c2a35;
+            position: relative;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+
+        .canvas-info {
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0 0;
+            font-size: 0.85em;
+            color: #bdc3c7;
+            background: rgba(28, 42, 53, 0.5);
+            border-radius: 6px;
+            margin-top: 10px;
+            padding: 10px;
+        }
+
+        .canvas-info-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .canvas-info-item i {
+            margin-right: 6px;
+            color: #4ecdc4;
+        }
+        
+        .history-controls, .zoom-controls {
+            position: absolute;
+            z-index: 10;
+        }
+
+        .history-controls {
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .zoom-controls {
+            bottom: 15px;
+            left: 15px;
+            display: flex;
+            align-items: center;
+            background: rgba(28, 42, 53, 0.9);
+            padding: 8px 12px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+        }
+
+        .history-btn, .zoom-btn {
+            background: rgba(78, 205, 196, 0.2);
+            color: #4ecdc4;
+            border: 1px solid #4ecdc4;
+            padding: 10px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1em;
+        }
+
+        .history-btn:hover, .zoom-btn:hover {
+            background: #4ecdc4;
+            color: #1c2a35;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(78, 205, 196, 0.4);
+        }
+        
+        .zoom-display {
+            color: white;
+            padding: 0 12px;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        .status-bar {
+            background: linear-gradient(135deg, #1c2a35 0%, #2c3e50 100%);
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #bdc3c7;
+            border-top: 2px solid #4ecdc4;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+        }
+
+        .status-item i {
+            margin-right: 6px;
+            color: #4ecdc4;
+        }
+
+        /* Lasso Overlay Styles */
+        .lasso-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            pointer-events: none;
+            display: none;
+        }
+        
+        .lasso-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Lasso Settings Panel */
+        .lasso-settings {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(28, 42, 53, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 110;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(78, 205, 196, 0.5);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            min-width: 280px;
+        }
+
+        .lasso-settings.active {
+            display: block;
+        }
+
+        .lasso-settings h4 {
+            margin: 0 0 12px 0;
+            color: #4ecdc4;
+            font-size: 1.1em;
+            border-bottom: 1px solid rgba(78, 205, 196, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .setting-row {
+            margin-bottom: 12px;
+        }
+
+        .setting-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            color: #bdc3c7;
+            font-size: 0.9em;
+        }
+
+        .setting-value {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+
+        .setting-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(78, 205, 196, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .setting-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4ecdc4;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .setting-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4ecdc4;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .lasso-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .lasso-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .lasso-btn.delete {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .lasso-btn.cancel {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+        }
+
+        .lasso-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .info-badge {
+            background: rgba(78, 205, 196, 0.1);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #a9c7c7;
+        }
+
+        .info-badge i {
+            color: #4ecdc4;
+            margin-right: 6px;
+        }
+
+        /* Warp Settings */
+        .warp-settings {
+            margin-top: 10px;
+            padding: 12px;
+            background: rgba(78, 205, 196, 0.05);
+            border-radius: 6px;
+            border: 1px solid rgba(78, 205, 196, 0.2);
+        }
+
+        .warp-row {
+            margin-bottom: 10px;
+        }
+
+        .warp-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            color: #bdc3c7;
+            font-size: 0.9em;
+        }
+
+        .warp-value {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+
+        /* Drawing Controls */
+        .drawing-controls {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(28, 42, 53, 0.95);
+            padding: 12px;
+            border-radius: 10px;
+            z-index: 110;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(78, 205, 196, 0.5);
+        }
+
+        .drawing-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .drawing-control label {
+            color: #4ecdc4;
+            font-size: 0.9em;
+            min-width: 70px;
+        }
+
+        .drawing-color-picker {
+            width: 35px;
+            height: 35px;
+            border: 2px solid #4ecdc4;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(78, 205, 196, 0.5);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal h3 {
+            margin: 0 0 20px 0;
+            color: #4ecdc4;
+            font-size: 1.4em;
+            text-align: center;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1em;
+        }
+
+        .modal-btn.primary {
+            background: linear-gradient(135deg, #4ecdc4 0%, #3aa59e 100%);
+            color: #1c2a35;
+        }
+
+        .modal-btn.secondary {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        input[type="text"], select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            background: rgba(28, 42, 53, 0.8);
+            color: white;
+            font-size: 1em;
+        }
+
+        /* Scrollbar */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(28, 42, 53, 0.5);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(78, 205, 196, 0.5);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(78, 205, 196, 0.8);
+        }
+    </style>
 </head>
 <body>
-  <div id="sidebar">
-    <h3>MOCKUP K — Tools</h3>
-    <label><input type="file" id="uploadMockup" accept="image/*" /> Tải mockup (background)</label>
-    <label><input type="file" id="uploadTexture" accept="image/*" /> Tải vật liệu (texture)</label>
+    <div class="header">
+        <h1 class="title">✨ MOCKUP K PRO - ENHANCED ✨</h1>
+        <p class="subtitle">Professional Mockup Editor with Advanced Lasso & Smart Warp Technology</p>
+    </div>
 
-    <hr/>
-    <button id="btnLassoMode">Bật Lasso</button>
-    <button id="btnDeleteLasso">Xóa vùng Lasso (Feather)</button>
-    <button id="btnWarpAuto">Warp Auto ( nâng cao )</button>
+    <div class="container">
+        <div class="sidebar">
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-cloud-upload-alt"></i> Upload Mockup</h3>
+                <button class="upload-btn" id="uploadMockupBtn">
+                    <i class="fas fa-image"></i> Chọn Ảnh Mockup
+                </button>
+                <input type="file" id="mockupFile" accept="image/*" hidden>
+            </div>
+            
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-layer-group"></i> Upload Vật Liệu</h3>
+                <button class="upload-btn secondary" id="uploadTextureBtn">
+                    <i class="fas fa-images"></i> Chọn Ảnh Vật Liệu
+                </button>
+                <input type="file" id="textureFiles" accept="image/*" multiple hidden>
+                
+                <p style="margin: 12px 0 8px; color: #ccc; font-size: 0.9em;">
+                    <i class="fas fa-hand-pointer"></i> Kéo thả vào canvas:
+                </p>
+                <div class="thumbnails" id="textureThumbnails"></div>
+            </div>
 
-    <label class="small">Warp intensity <span id="warpVal">40</span></label>
-    <input id="warpRange" type="range" min="0" max="200" value="40" />
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-tools"></i> Công Cụ Chỉnh Sửa</h3>
+                <div class="tools">
+                    <button class="tool-btn active-tool" id="transformBtn" title="Chọn & Transform (Esc)">
+                        <i class="fas fa-mouse-pointer"></i>
+                        <span>Select</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="handToolBtn" title="Di chuyển Canvas (H)">
+                        <i class="fas fa-hand-paper"></i>
+                        <span>Pan</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="lassoBtn" title="Lasso Tool Pro (L)">
+                        <i class="fas fa-cut"></i>
+                        <span>Lasso Pro</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="fitSurfaceBtn" title="Fit vào bề mặt mockup">
+                        <i class="fas fa-crop-alt"></i>
+                        <span>Fit Surface</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="warpAutoBtn" title="Smart Warp (W)">
+                        <i class="fas fa-wave-square"></i>
+                        <span>Smart Warp</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="removeBtn" title="Xóa đối tượng (Delete)">
+                        <i class="fas fa-trash"></i>
+                        <span>Xóa</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="bringFrontBtn" title="Đưa lên trên">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>Lên Trước</span>
+                    </button>
+                    
+                    <button class="tool-btn" id="sendBackBtn" title="Đưa xuống dưới">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>Ra Sau</span>
+                    </button>
+                </div>
 
-    <label class="small">Feather (percent of min dim)</label>
-    <input id="featherRange" type="range" min="0" max="10" value="1" />
+                <!-- Warp Settings -->
+                <div class="warp-settings">
+                    <div class="warp-row">
+                        <div class="warp-label">
+                            <span><i class="fas fa-magic"></i> Warp Intensity</span>
+                            <span class="warp-value" id="warpIntensityValue">50</span>
+                        </div>
+                        <input type="range" class="setting-slider" id="warpIntensity" min="0" max="100" value="50">
+                    </div>
+                    <div class="info-badge">
+                        <i class="fas fa-info-circle"></i>
+                        Điều chỉnh độ mạnh của hiệu ứng warp 3D
+                    </div>
+                </div>
+            </div>
 
-    <div id="status">Sẵn sàng.</div>
-  </div>
+            <div class="section">
+                <h3 class="section-title"><i class="fas fa-download"></i> Lưu & Xuất File</h3>
+                <button class="upload-btn save" id="saveBtn">
+                    <i class="fas fa-save"></i> Lưu & Xuất Ảnh
+                </button>
+                <div class="info-badge">
+                    <i class="fas fa-check-circle"></i> Hỗ trợ: PNG, JPG (Chất lượng cao)
+                </div>
+            </div>
+        </div>
 
-  <div id="canvas-wrap">
-    <canvas id="c" width="1000" height="700"></canvas>
-  </div>
+        <div class="canvas-area">
+            <div class="canvas-container">
+                <canvas id="main-canvas"></canvas>
+                
+                <!-- Lasso Overlay -->
+                <div class="lasso-overlay" id="lassoOverlay">
+                    <canvas id="lassoCanvas" class="lasso-canvas"></canvas>
+                </div>
+                
+                <!-- Lasso Settings Panel -->
+                <div class="lasso-settings" id="lassoSettings">
+                    <h4><i class="fas fa-cut"></i> Lasso Settings</h4>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <span>Feather (Làm mềm cạnh)</span>
+                            <span class="setting-value" id="featherValue">5px</span>
+                        </div>
+                        <input type="range" class="setting-slider" id="featherSlider" min="0" max="50" value="5">
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <span>Tolerance (Độ dung sai)</span>
+                            <span class="setting-value" id="toleranceValue">10%</span>
+                        </div>
+                        <input type="range" class="setting-slider" id="toleranceSlider" min="0" max="100" value="10">
+                    </div>
+                    
+                    <div class="info-badge" style="margin: 10px 0;">
+                        <i class="fas fa-lightbulb"></i>
+                        Vẽ vùng chọn → Enter để hoàn tất → Delete để xóa
+                    </div>
+                    
+                    <div class="lasso-actions">
+                        <button class="lasso-btn delete" id="deleteLassoBtn">
+                            <i class="fas fa-trash"></i> Xóa Vùng
+                        </button>
+                        <button class="lasso-btn cancel" id="cancelLassoBtn">
+                            <i class="fas fa-times"></i> Hủy
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="history-controls">
+                    <button class="history-btn" id="undoBtn" title="Undo (Ctrl+Z)">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button class="history-btn" id="redoBtn" title="Redo (Ctrl+Y)">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+                
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoomInCanvas" title="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    <div class="zoom-display" id="zoomLevel">100%</div>
+                    <button class="zoom-btn" id="zoomOutCanvas" title="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button class="zoom-btn" id="zoomResetCanvas" title="Reset Zoom">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="canvas-info">
+                <div class="canvas-info-item">
+                    <i class="fas fa-keyboard"></i>
+                    <span><strong>Esc</strong>: Select | <strong>L</strong>: Lasso | <strong>H</strong>: Pan | <strong>W</strong>: Warp</span>
+                </div>
+                <div class="canvas-info-item">
+                    <i class="fas fa-cut"></i>
+                    <span>Lasso: Vẽ vùng → <strong>Enter</strong> → <strong>Delete</strong> để xóa với hiệu ứng feather</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  <!-- Libraries -->
-  <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.0/dist/fabric.min.js"></script>
-  <!-- glfx.js (for displacement) - from CDN -->
-  <script src="https://cdn.jsdelivr.net/gh/evanw/glfx.js/glfx.js"></script>
+    <!-- Save Modal -->
+    <div class="modal-overlay" id="saveOverlay">
+        <div class="modal">
+            <h3><i class="fas fa-download"></i> Xuất File Mockup</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="color: #bdc3c7; margin-bottom: 8px; display: block;">Định dạng file:</label>
+                <select id="exportFormat">
+                    <option value="png">PNG (Chất lượng cao, nền trong suốt)</option>
+                    <option value="jpeg">JPG (Kích thước nhỏ)</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="color: #bdc3c7; margin-bottom: 8px; display: block;">Tên file:</label>
+                <input type="text" id="exportFileName" value="mockup_k_pro">
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" id="cancelSave">
+                    <i class="fas fa-times"></i> Hủy
+                </button>
+                <button class="modal-btn primary" id="confirmSave">
+                    <i class="fas fa-download"></i> Tải Xuống
+                </button>
+            </div>
+        </div>
+    </div>
 
-  <script>
-  /*************************************************************************
-   * Minimal Mockup K app with improved Lasso delete (feather) and Warp
-   * - This is a self-contained example you can copy/paste.
-   * - Replace or merge functions into your existing project as needed.
-   *************************************************************************/
+    <div class="status-bar">
+        <div class="status-item">
+            <i class="fas fa-info-circle"></i>
+            <span id="statusText">Sẵn sàng - Tải mockup và vật liệu để bắt đầu</span>
+        </div>
+        <div class="status-item">
+            <i class="fas fa-object-group"></i>
+            <span>Đối tượng: <span id="selectedObj">Không có</span></span>
+        </div>
+        <div class="status-item">
+            <i class="fas fa-expand-arrows-alt"></i>
+            <span>Zoom: <span id="zoomStatus">100%</span></span>
+        </div>
+    </div>
 
-  const canvas = new fabric.Canvas('c', { preserveObjectStacking: true, selection: false });
-  let mockupImage = null; // background mockup (fabric.Image)
-  let currentTexture = null; // active texture (fabric.Image)
-  let isLassoMode = false;
-  let lassoPoints = [];
-  let lassoLine = null;
+    <script>
+        // ========== KHỞI TẠO CANVAS ==========
+        const canvas = new fabric.Canvas('main-canvas', {
+            backgroundColor: 'transparent',
+            preserveObjectStacking: true,
+            selection: true
+        });
 
-  const statusEl = document.getElementById('status');
-  function updateStatus(text) { statusEl.textContent = text; }
-
-  // UI
-  document.getElementById('uploadMockup').addEventListener('change', ev => {
-    const f = ev.target.files[0]; if (!f) return;
-    const url = URL.createObjectURL(f);
-    fabric.Image.fromURL(url, img => {
-      // fit to canvas
-      img.set({ selectable:false, evented:false, left:0, top:0 });
-      const ratio = Math.min(canvas.width / img.width, canvas.height / img.height);
-      img.scale(ratio);
-      canvas.clear();
-      mockupImage = img;
-      canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-      updateStatus('Mockup loaded.');
-    });
-  });
-
-  document.getElementById('uploadTexture').addEventListener('change', ev => {
-    const f = ev.target.files[0]; if (!f) return;
-    const url = URL.createObjectURL(f);
-    fabric.Image.fromURL(url, img => {
-      img.set({
-        left: 120, top: 80,
-        scaleX: 0.6, scaleY: 0.6,
-        cornerStyle: 'circle',
-        cornerColor: '#4ecdc4',
-        borderColor: '#4ecdc4',
-        name: 'texture'
-      });
-      currentTexture = img;
-      canvas.add(img);
-      canvas.setActiveObject(img);
-      updateStatus('Texture loaded. Kéo/thu phóng/góc để đặt.');
-    });
-  });
-
-  // Lasso drawing handlers
-  document.getElementById('btnLassoMode').addEventListener('click', () => {
-    isLassoMode = !isLassoMode;
-    document.getElementById('btnLassoMode').textContent = isLassoMode ? 'Tắt Lasso' : 'Bật Lasso';
-    if (isLassoMode) {
-      canvas.defaultCursor = 'crosshair';
-      lassoPoints = [];
-      if (lassoLine) { canvas.remove(lassoLine); lassoLine = null; }
-      updateStatus('Đang ở chế độ Lasso: click để vẽ (double-click để đóng vùng).');
-    } else {
-      canvas.defaultCursor = 'default';
-    }
-  });
-
-  // Mouse events for lasso (viewport coordinates)
-  canvas.on('mouse:down', function(opt) {
-    if (!isLassoMode) return;
-    const pointer = canvas.getPointer(opt.e, true);
-    lassoPoints.push({ x: pointer.x, y: pointer.y });
-    redrawLassoPath();
-  });
-
-  canvas.on('mouse:dblclick', function(opt) {
-    if (!isLassoMode) return;
-    // close and finish
-    isLassoMode = false;
-    document.getElementById('btnLassoMode').textContent = 'Bật Lasso';
-    updateStatus('Vùng đã đóng. Nhấn "Xóa vùng Lasso" để xóa (feather).');
-  });
-
-  function redrawLassoPath() {
-    if (lassoLine) { canvas.remove(lassoLine); lassoLine = null; }
-    if (lassoPoints.length < 2) return;
-    const points = lassoPoints.reduce((acc, p) => acc.concat([p.x, p.y]), []);
-    lassoLine = new fabric.Polygon(lassoPoints, {
-      stroke: '#ff5722', strokeWidth: 2, fill: 'rgba(255,87,34,0.12)', selectable:false, evented:false
-    });
-    canvas.add(lassoLine);
-    canvas.requestRenderAll();
-  }
-
-  document.getElementById('btnDeleteLasso').addEventListener('click', () => {
-    // pass feather percent
-    const featherPercent = Number(document.getElementById('featherRange').value) || 1;
-    deleteLassoArea({ featherPercent });
-  });
-
-  /*************************************************************************
-   * Improved deleteLassoArea: smooth feathered cut using mask canvas
-   * - Uses fabric internals to map viewport lasso points into object-local image pixels
-   **************************************************************************/
-  function deleteLassoArea(options = {}) {
-    if (!lassoPoints || lassoPoints.length < 3) {
-      updateStatus('Vui lòng tạo vùng chọn trước khi xóa');
-      return;
-    }
-    const activeObj = canvas.getActiveObject();
-    if (!activeObj || activeObj.name !== 'texture') {
-      updateStatus('Vui lòng chọn một vật liệu (texture) trước khi xóa vùng chọn');
-      return;
-    }
-
-    const imgEl = activeObj.getElement();
-    if (!imgEl) { updateStatus('Ảnh texture không hợp lệ'); return; }
-
-    // Natural image size
-    const imgW = imgEl.naturalWidth || imgEl.width;
-    const imgH = imgEl.naturalHeight || imgEl.height;
-
-    // Create canvases matching image natural resolution
-    const srcCanvas = document.createElement('canvas');
-    srcCanvas.width = imgW; srcCanvas.height = imgH;
-    const srcCtx = srcCanvas.getContext('2d');
-
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = imgW; maskCanvas.height = imgH;
-    const maskCtx = maskCanvas.getContext('2d');
-
-    // Draw original texture into srcCanvas at natural resolution
-    srcCtx.drawImage(imgEl, 0, 0, imgW, imgH);
-
-    // Map lasso points viewport -> image-local using object's transform
-    const matrix = activeObj.calcTransformMatrix();
-    const inverted = fabric.util.invertTransform(matrix);
-
-    maskCtx.fillStyle = 'black';
-    maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
-    maskCtx.beginPath();
-    let p = fabric.util.transformPoint(new fabric.Point(lassoPoints[0].x, lassoPoints[0].y), inverted);
-    maskCtx.moveTo(p.x, p.y);
-    for (let i = 1; i < lassoPoints.length; i++) {
-      let pp = fabric.util.transformPoint(new fabric.Point(lassoPoints[i].x, lassoPoints[i].y), inverted);
-      maskCtx.lineTo(pp.x, pp.y);
-    }
-    maskCtx.closePath();
-    maskCtx.fillStyle = 'white';
-    maskCtx.fill();
-
-    // Feather amount: percent of smaller dimension, default 1%
-    const featherPct = options.featherPercent || Number(document.getElementById('featherRange').value) || 1;
-    const blurPx = Math.max(0, Math.round(Math.min(imgW, imgH) * (featherPct / 100)));
-
-    // Try canvas filter blur (modern browsers). Fallback to simple polygon cut
-    try {
-      const tmp = document.createElement('canvas');
-      tmp.width = maskCanvas.width; tmp.height = maskCanvas.height;
-      const tctx = tmp.getContext('2d');
-      if (blurPx > 0) {
-        tctx.filter = `blur(${blurPx}px)`;
-      }
-      tctx.drawImage(maskCanvas, 0, 0);
-      tctx.filter = 'none';
-
-      const maskData = tctx.getImageData(0, 0, tmp.width, tmp.height);
-      const srcData = srcCtx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
-
-      // Apply mask to source alpha: where mask is white (255) -> removed
-      for (let i = 0; i < maskData.data.length; i += 4) {
-        // grayscale mask
-        const m = maskData.data[i]; // 0..255
-        // We want white to remove -> alpha reduced
-        const alphaFactor = 1 - (m / 255); // m=255 -> alphaFactor = 0 -> fully removed
-        srcData.data[i + 3] = Math.round(srcData.data[i + 3] * alphaFactor);
-      }
-      srcCtx.putImageData(srcData, 0, 0);
-    } catch (err) {
-      // Fallback: use destination-out
-      srcCtx.globalCompositeOperation = 'destination-out';
-      srcCtx.drawImage(maskCanvas, 0, 0);
-      srcCtx.globalCompositeOperation = 'source-over';
-    }
-
-    // Replace fabric object with new image preserving transforms
-    const newDataUrl = srcCanvas.toDataURL();
-    fabric.Image.fromURL(newDataUrl, function(newImg) {
-      newImg.set({
-        left: activeObj.left,
-        top: activeObj.top,
-        scaleX: activeObj.scaleX,
-        scaleY: activeObj.scaleY,
-        angle: activeObj.angle,
-        opacity: activeObj.opacity,
-        name: 'texture',
-        cornerStyle: 'circle',
-        cornerColor: '#4ecdc4',
-        borderColor: '#4ecdc4',
-        cornerSize: 12,
-        transparentCorners: false
-      });
-      canvas.remove(activeObj);
-      canvas.add(newImg);
-      canvas.setActiveObject(newImg);
-      cleanupLasso();
-      canvas.requestRenderAll();
-      updateStatus('Đã xóa vùng (feathered).');
-    });
-  }
-
-  function cleanupLasso() {
-    lassoPoints = [];
-    if (lassoLine) { canvas.remove(lassoLine); lassoLine = null; }
-    canvas.requestRenderAll();
-  }
-
-  /*************************************************************************
-   * Warp Auto (improved)
-   * - createAutoDisplacementMapForObject(obj, targetW, targetH) => returns Promise<HTMLImageElement>
-   * - applyWarpWithSettings(obj, settings)
-   *
-   * Uses glfx.js (cpu/gpu) to apply heightField displacement and adds subtle shading.
-   **************************************************************************/
-  function createAutoDisplacementMapForObject(obj, targetW, targetH) {
-    return new Promise((resolve, reject) => {
-      if (!mockupImage || !obj) { reject(new Error('Chưa có mockup hoặc object')); return; }
-      const mockEl = mockupImage.getElement();
-      const mockW = mockEl.naturalWidth || mockEl.width;
-      const mockH = mockEl.naturalHeight || mockEl.height;
-
-      // Compute object's bbox in canvas coords, then to mockup image coords
-      const objBbox = obj.getBoundingRect(true);
-      const mockInv = fabric.util.invertTransform(mockupImage.calcTransformMatrix());
-      const tl = fabric.util.transformPoint(new fabric.Point(objBbox.left, objBbox.top), mockInv);
-      const br = fabric.util.transformPoint(new fabric.Point(objBbox.left + objBbox.width, objBbox.top + objBbox.height), mockInv);
-
-      const sx = Math.max(0, Math.min(mockW, tl.x));
-      const sy = Math.max(0, Math.min(mockH, tl.y));
-      const sWidth = Math.max(1, Math.min(mockW - sx, br.x - tl.x));
-      const sHeight = Math.max(1, Math.min(mockH - sy, br.y - tl.y));
-
-      // Create temporary canvas sized to target displacement map
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = Math.max(1, targetW);
-      tempCanvas.height = Math.max(1, targetH);
-      const ctx = tempCanvas.getContext('2d');
-
-      // Draw scaled crop of mockup into temp canvas
-      ctx.drawImage(mockEl, sx, sy, sWidth, sHeight, 0, 0, tempCanvas.width, tempCanvas.height);
-
-      // Convert to grayscale + increase contrast slightly
-      try {
-        let id = ctx.getImageData(0,0,tempCanvas.width,tempCanvas.height);
-        let d = id.data;
-        for (let i=0;i<d.length;i+=4){
-          let lum = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
-          lum = (lum - 128) * 1.4 + 128; // contrast boost
-          lum = Math.max(0, Math.min(255, lum));
-          d[i] = d[i+1] = d[i+2] = lum;
+        function resizeCanvas() {
+            const container = document.querySelector('.canvas-container');
+            canvas.setWidth(container.clientWidth);
+            canvas.setHeight(container.clientHeight);
+            
+            const lassoCanvas = document.getElementById('lassoCanvas');
+            const lassoOverlay = document.getElementById('lassoOverlay');
+            if (lassoCanvas) {
+                lassoCanvas.width = container.clientWidth;
+                lassoCanvas.height = container.clientHeight;
+            }
+            if (lassoOverlay) {
+                lassoOverlay.style.width = container.clientWidth + 'px';
+                lassoOverlay.style.height = container.clientHeight + 'px';
+            }
+            
+            canvas.renderAll();
         }
-        ctx.putImageData(id,0,0);
-      } catch(e) {
-        // ignore
-      }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-      // Soft blur to avoid harsh displacement
-      try {
-        const blurPx = Math.max(1, Math.round(Math.min(tempCanvas.width, tempCanvas.height) * 0.01));
-        const tmp = document.createElement('canvas');
-        tmp.width = tempCanvas.width; tmp.height = tempCanvas.height;
-        const tctx = tmp.getContext('2d');
-        tctx.filter = `blur(${blurPx}px)`;
-        tctx.drawImage(tempCanvas, 0, 0);
-        tctx.filter = 'none';
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.src = tmp.toDataURL();
-      } catch (err) {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.src = tempCanvas.toDataURL();
-      }
-    });
-  }
+        // ========== BIẾN TOÀN CỤC ==========
+        let mockupImage = null;
+        let textures = [];
+        let zoomLevel = 1;
+        let currentToolMode = 'select';
+        
+        // Lasso variables
+        let isLassoMode = false;
+        let lassoPoints = [];
+        let lassoCanvas = null;
+        let lassoCtx = null;
+        let isDrawingLasso = false;
+        let lassoPath = null;
+        
+        // History system
+        let history = [];
+        let historyIndex = -1;
+        const MAX_HISTORY = 30;
 
-  function applyWarpWithSettings(obj, settings = {}) {
-    const imgEl = obj.getElement();
-    if (!imgEl) { updateStatus('Ảnh vật liệu không hợp lệ'); return; }
+        // ========== HISTORY SYSTEM ==========
+        function saveToHistory() {
+            if (historyIndex < history.length - 1) {
+                history = history.slice(0, historyIndex + 1);
+            }
+            
+            const state = canvas.toJSON();
+            history.push(state);
+            historyIndex++;
+            
+            if (history.length > MAX_HISTORY) {
+                history.shift();
+                historyIndex--;
+            }
+            
+            updateHistoryButtons();
+        }
+        
+        function updateHistoryButtons() {
+            document.getElementById('undoBtn').disabled = historyIndex <= 0;
+            document.getElementById('redoBtn').disabled = historyIndex >= history.length - 1;
+        }
+        
+        canvas.on('object:modified', saveToHistory);
+        canvas.on('object:added', saveToHistory);
+        canvas.on('object:removed', saveToHistory);
 
-    const texW = imgEl.naturalWidth || imgEl.width;
-    const texH = imgEl.naturalHeight || imgEl.height;
-    updateStatus('Đang áp dụng Warp (nâng cao)...');
-
-    createAutoDisplacementMapForObject(obj, texW, texH).then(dispImg => {
-      try {
-        // create glfx canvas and textures
-        const fxCanvas = fx.canvas();
-        const tex = fxCanvas.texture(imgEl);
-        const disp = fxCanvas.texture(dispImg);
-
-        fxCanvas.draw(tex).update();
-
-        // compute strength heuristically
-        const diag = Math.sqrt(texW*texW + texH*texH);
-        const baseStrength = (settings.dispIntensity || Number(document.getElementById('warpRange').value) || 40) / 100; // 0..2
-        const strength = Math.max(0.01, baseStrength * (diag / 500));
-
-        // apply heightField / displacement
-        if (disp) {
-          // heightField expects small numbers; scale down
-          fxCanvas.heightField(disp, Math.min(0.9, strength * 0.2)).update();
+        // ========== LASSO TOOL PRO (IMPROVED) ==========
+        function activateLassoMode() {
+            currentToolMode = 'lasso';
+            isLassoMode = true;
+            lassoPoints = [];
+            
+            canvas.selection = false;
+            canvas.defaultCursor = 'crosshair';
+            
+            const lassoOverlay = document.getElementById('lassoOverlay');
+            lassoCanvas = document.getElementById('lassoCanvas');
+            
+            lassoCanvas.width = canvas.width;
+            lassoCanvas.height = canvas.height;
+            lassoCtx = lassoCanvas.getContext('2d');
+            
+            lassoOverlay.style.display = 'block';
+            lassoOverlay.style.pointerEvents = 'auto';
+            
+            document.getElementById('lassoSettings').classList.add('active');
+            
+            updateToolButtons();
+            updateStatus('Lasso Tool Pro: Vẽ vùng chọn → Enter để hoàn tất');
         }
 
-        // optional mild bulge for realism
-        if (settings.bulge && settings.bulge > 0) {
-          fxCanvas.bulgePinch(0.5, 0.5, Math.min(0.9, settings.bulge/100 * 0.6), 0.9).update();
+        function startLassoDrawing(e) {
+            if (!isLassoMode) return;
+            isDrawingLasso = true;
+            
+            const rect = canvas.getElement().getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            lassoPoints = [{x, y}];
+            
+            lassoCtx.clearRect(0, 0, lassoCanvas.width, lassoCanvas.height);
+            lassoCtx.beginPath();
+            lassoCtx.moveTo(x, y);
+            lassoCtx.strokeStyle = '#4ecdc4';
+            lassoCtx.lineWidth = 2;
+            lassoCtx.shadowColor = '#4ecdc4';
+            lassoCtx.shadowBlur = 8;
+            lassoCtx.setLineDash([5, 5]);
         }
 
-        const warpedDataUrl = fxCanvas.toDataURL();
+        function continueLassoDrawing(e) {
+            if (!isLassoMode || !isDrawingLasso) return;
+            
+            const rect = canvas.getElement().getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            lassoPoints.push({x, y});
+            
+            lassoCtx.lineTo(x, y);
+            lassoCtx.stroke();
+        }
 
-        // add subtle shading/highlight on top for depth
-        const shadowCanvas = document.createElement('canvas');
-        shadowCanvas.width = texW; shadowCanvas.height = texH;
-        const sctx = shadowCanvas.getContext('2d');
-        const warpedImg = new Image();
-        warpedImg.onload = function() {
-          sctx.drawImage(warpedImg, 0, 0, texW, texH);
+        function finishLassoSelection() {
+            if (!isLassoMode || lassoPoints.length < 3) {
+                updateStatus('Vui lòng vẽ vùng chọn với ít nhất 3 điểm');
+                return;
+            }
+            
+            // Draw closed path
+            lassoCtx.closePath();
+            lassoCtx.fillStyle = 'rgba(78, 205, 196, 0.2)';
+            lassoCtx.fill();
+            lassoCtx.strokeStyle = '#4ecdc4';
+            lassoCtx.lineWidth = 2;
+            lassoCtx.setLineDash([]);
+            lassoCtx.stroke();
+            
+            isDrawingLasso = false;
+            updateStatus('Vùng đã chọn. Nhấn Delete hoặc nút "Xóa Vùng" để xóa với hiệu ứng feather');
+        }
 
-          // multiply-ish darken to simulate fold shadows
-          sctx.globalCompositeOperation = 'source-over';
-          sctx.fillStyle = 'rgba(0,0,0,0.08)';
-          sctx.fillRect(0,0,texW,texH);
-
-          // gentle highlight
-          sctx.globalCompositeOperation = 'lighter';
-          const grad = sctx.createRadialGradient(texW*0.4, texH*0.3, 0, texW*0.4, texH*0.3, Math.max(texW,texH)*0.8);
-          grad.addColorStop(0, 'rgba(255,255,255,0.03)');
-          grad.addColorStop(1, 'rgba(255,255,255,0.0)');
-          sctx.fillStyle = grad;
-          sctx.fillRect(0,0,texW,texH);
-
-          // Replace object with new image preserving transforms
-          fabric.Image.fromURL(shadowCanvas.toDataURL(), function(finalImg) {
-            finalImg.set({
-              left: obj.left,
-              top: obj.top,
-              scaleX: obj.scaleX,
-              scaleY: obj.scaleY,
-              angle: obj.angle,
-              name: 'texture',
-              cornerStyle: 'circle',
-              cornerColor: '#4ecdc4',
-              borderColor: '#4ecdc4',
-              cornerSize: 12,
-              transparentCorners: false
+        // IMPROVED: Feather delete function (smooth edge removal like Photoshop)
+        function deleteLassoAreaWithFeather() {
+            if (!isLassoMode || lassoPoints.length < 3) {
+                updateStatus('Vui lòng tạo vùng chọn trước khi xóa');
+                return;
+            }
+            
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj || activeObj.name !== 'texture') {
+                updateStatus('Vui lòng chọn một vật liệu (texture) trước khi xóa');
+                return;
+            }
+            
+            const imgEl = activeObj.getElement();
+            const imgW = imgEl.naturalWidth || imgEl.width;
+            const imgH = imgEl.naturalHeight || imgEl.height;
+            
+            // Create canvases at native resolution
+            const srcCanvas = document.createElement('canvas');
+            srcCanvas.width = imgW;
+            srcCanvas.height = imgH;
+            const srcCtx = srcCanvas.getContext('2d');
+            
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = imgW;
+            maskCanvas.height = imgH;
+            const maskCtx = maskCanvas.getContext('2d');
+            
+            // Draw original texture
+            srcCtx.drawImage(imgEl, 0, 0, imgW, imgH);
+            
+            // Transform lasso points to image coordinates
+            const matrix = activeObj.calcTransformMatrix();
+            const inverted = fabric.util.invertTransform(matrix);
+            
+            // Draw mask
+            maskCtx.fillStyle = 'black';
+            maskCtx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+            maskCtx.beginPath();
+            
+            const firstPoint = fabric.util.transformPoint(
+                new fabric.Point(lassoPoints[0].x, lassoPoints[0].y),
+                inverted
+            );
+            maskCtx.moveTo(firstPoint.x, firstPoint.y);
+            
+            for (let i = 1; i < lassoPoints.length; i++) {
+                const point = fabric.util.transformPoint(
+                    new fabric.Point(lassoPoints[i].x, lassoPoints[i].y),
+                    inverted
+                );
+                maskCtx.lineTo(point.x, point.y);
+            }
+            
+            maskCtx.closePath();
+            maskCtx.fillStyle = 'white';
+            maskCtx.fill();
+            
+            // Get feather value
+            const featherPx = parseInt(document.getElementById('featherSlider').value);
+            
+            // Apply feather blur to mask
+            if (featherPx > 0) {
+                const blurCanvas = document.createElement('canvas');
+                blurCanvas.width = maskCanvas.width;
+                blurCanvas.height = maskCanvas.height;
+                const blurCtx = blurCanvas.getContext('2d');
+                
+                blurCtx.filter = `blur(${featherPx}px)`;
+                blurCtx.drawImage(maskCanvas, 0, 0);
+                blurCtx.filter = 'none';
+                
+                // Get mask data
+                const maskData = blurCtx.getImageData(0, 0, blurCanvas.width, blurCanvas.height);
+                const srcData = srcCtx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
+                
+                // Apply mask to alpha channel
+                for (let i = 0; i < maskData.data.length; i += 4) {
+                    const maskValue = maskData.data[i]; // 0-255
+                    const alphaFactor = 1 - (maskValue / 255);
+                    srcData.data[i + 3] = Math.round(srcData.data[i + 3] * alphaFactor);
+                }
+                
+                srcCtx.putImageData(srcData, 0, 0);
+            } else {
+                // No feather, simple cut
+                srcCtx.globalCompositeOperation = 'destination-out';
+                srcCtx.drawImage(maskCanvas, 0, 0);
+            }
+            
+            // Create new image
+            fabric.Image.fromURL(srcCanvas.toDataURL(), function(newImg) {
+                newImg.set({
+                    left: activeObj.left,
+                    top: activeObj.top,
+                    scaleX: activeObj.scaleX,
+                    scaleY: activeObj.scaleY,
+                    angle: activeObj.angle,
+                    opacity: activeObj.opacity,
+                    name: 'texture',
+                    cornerStyle: 'circle',
+                    cornerColor: '#4ecdc4',
+                    borderColor: '#4ecdc4',
+                    cornerSize: 12
+                });
+                
+                canvas.remove(activeObj);
+                canvas.add(newImg);
+                canvas.setActiveObject(newImg);
+                
+                cleanupLasso();
+                canvas.renderAll();
+                saveToHistory();
+                
+                updateStatus('Đã xóa vùng với hiệu ứng feather mềm mại!');
             });
-            canvas.remove(obj);
-            canvas.add(finalImg);
-            canvas.setActiveObject(finalImg);
-            canvas.requestRenderAll();
-            updateStatus('Warp auto áp dụng xong.');
-          });
-        };
-        warpedImg.src = warpedDataUrl;
-      } catch (err) {
-        console.error('Warp error', err);
-        updateStatus('Lỗi khi áp dụng Warp. Kiểm tra console.');
-      }
-    }).catch(err => {
-      console.error('Create displacement failed', err);
-      updateStatus('Không thể tạo displacement map cho vật liệu.');
-    });
-  }
+        }
 
-  // Hook warp button
-  document.getElementById('btnWarpAuto').addEventListener('click', () => {
-    const obj = canvas.getActiveObject();
-    if (!obj || obj.name !== 'texture') { updateStatus('Chọn vật liệu trước khi áp dụng Warp'); return; }
-    const settings = {
-      dispIntensity: Number(document.getElementById('warpRange').value),
-      bulge: 10,
-      warpX: 0,
-      warpY: 0,
-      blend: 60
-    };
-    applyWarpWithSettings(obj, settings);
-  });
+        function cleanupLasso() {
+            if (lassoCtx) {
+                lassoCtx.clearRect(0, 0, lassoCanvas.width, lassoCanvas.height);
+            }
+            
+            document.getElementById('lassoOverlay').style.display = 'none';
+            document.getElementById('lassoOverlay').style.pointerEvents = 'none';
+            document.getElementById('lassoSettings').classList.remove('active');
+            
+            lassoPoints = [];
+            isDrawingLasso = false;
+            canvas.selection = true;
+            canvas.defaultCursor = 'default';
+        }
 
-  // warp range display
-  const wr = document.getElementById('warpRange');
-  const wv = document.getElementById('warpVal');
-  wr.addEventListener('input', () => { wv.textContent = wr.value; });
+        // Lasso event listeners
+        document.addEventListener('mousedown', function(e) {
+            if (isLassoMode && e.target.id === 'lassoCanvas') {
+                startLassoDrawing(e);
+            }
+        });
 
-  // keyboard: press Esc to cancel lasso
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      isLassoMode = false;
-      document.getElementById('btnLassoMode').textContent = 'Bật Lasso';
-      cleanupLasso();
-      updateStatus('Đã hủy Lasso.');
-    }
-  });
+        document.addEventListener('mousemove', function(e) {
+            if (isLassoMode && isDrawingLasso) {
+                continueLassoDrawing(e);
+            }
+        });
 
-  // small helper save history stub (integrate with your existing undo)
-  function saveToHistory() {
-    // placeholder: integrate with your project's history/undo system
-    // e.g., store canvas.toJSON() snapshots
-    // console.log('Saved state to history (stub).');
-  }
+        document.addEventListener('mouseup', function(e) {
+            if (isLassoMode && isDrawingLasso) {
+                isDrawingLasso = false;
+            }
+        });
 
-  // initial guidance
-  updateStatus('Tải mockup và texture để bắt đầu. Sử dụng Lasso để chọn vùng và xóa (feather), Warp Auto để tạo effect.');
-  </script>
-</body>
-</html>
+        // ========== SMART WARP (IMPROVED) ==========
+        async function applySmartWarp() {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj || activeObj.name !== 'texture') {
+                updateStatus('Vui lòng chọn một vật liệu để warp');
+                return;
+            }
+            
+            if (!mockupImage) {
+                updateStatus('Cần có mockup để tạo displacement map');
+                return;
+            }
+            
+            updateStatus('Đang phân tích mockup và tạo displacement map...');
+            
+            try {
+                const dispMap = await createSmartDisplacementMap(activeObj);
+                await applyAdvancedWarp(activeObj, dispMap);
+                updateStatus('Smart Warp hoàn tất! Hiệu ứng 3D chân thực.');
+            } catch (err) {
+                console.error('Warp error:', err);
+                updateStatus('Lỗi khi áp dụng warp');
+            }
+        }
+
+        function createSmartDisplacementMap(obj) {
+            return new Promise((resolve) => {
+                const mockEl = mockupImage.getElement();
+                const mockW = mockEl.naturalWidth || mockEl.width;
+                const mockH = mockEl.naturalHeight || mockEl.height;
+                
+                // Get object bounds in canvas coordinates
+                const objBbox = obj.getBoundingRect(true);
+                const mockInv = fabric.util.invertTransform(mockupImage.calcTransformMatrix());
+                
+                const tl = fabric.util.transformPoint(
+                    new fabric.Point(objBbox.left, objBbox.top),
+                    mockInv
+                );
+                const br = fabric.util.transformPoint(
+                    new fabric.Point(objBbox.left + objBbox.width, objBbox.top + objBbox.height),
+                    mockInv
+                );
+                
+                const sx = Math.max(0, Math.min(mockW, tl.x));
+                const sy = Math.max(0, Math.min(mockH, tl.y));
+                const sWidth = Math.max(1, Math.min(mockW - sx, br.x - tl.x));
+                const sHeight = Math.max(1, Math.min(mockH - sy, br.y - tl.y));
+                
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = 512;
+                tempCanvas.height = 512;
+                const ctx = tempCanvas.getContext('2d');
+                
+                // Draw mockup region
+                ctx.drawImage(mockEl, sx, sy, sWidth, sHeight, 0, 0, 512, 512);
+                
+                // Convert to grayscale with enhanced contrast
+                const imageData = ctx.getImageData(0, 0, 512, 512);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    let lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                    
+                    // Enhanced contrast for better displacement
+                    lum = (lum - 128) * 1.8 + 128;
+                    lum = Math.max(0, Math.min(255, lum));
+                    
+                    data[i] = data[i + 1] = data[i + 2] = lum;
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+                
+                // Apply smart blur
+                const blurAmount = 4;
+                const blurCanvas = document.createElement('canvas');
+                blurCanvas.width = 512;
+                blurCanvas.height = 512;
+                const blurCtx = blurCanvas.getContext('2d');
+                
+                blurCtx.filter = `blur(${blurAmount}px)`;
+                blurCtx.drawImage(tempCanvas, 0, 0);
+                
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.src = blurCanvas.toDataURL();
+            });
+        }
+
+        async function applyAdvancedWarp(obj, dispMap) {
+            return new Promise((resolve, reject) => {
+                const imgEl = obj.getElement();
+                const intensity = parseInt(document.getElementById('warpIntensity').value) / 100;
+                
+                try {
+                    const fxCanvas = fx.canvas();
+                    const texture = fxCanvas.texture(imgEl);
+                    const dispTexture = fxCanvas.texture(dispMap);
+                    
+                    fxCanvas.draw(texture).update();
+                    
+                    // Apply displacement with smart intensity
+                    const strength = Math.max(0.05, intensity * 0.25);
+                    fxCanvas.heightField(dispTexture, strength).update();
+                    
+                    // Add subtle bulge for depth
+                    const bulge = intensity * 0.15;
+                    fxCanvas.bulgePinch(0.5, 0.5, bulge, 0.85).update();
+                    
+                    const warpedUrl = fxCanvas.toDataURL();
+                    
+                    // Add lighting effects
+                    const finalCanvas = document.createElement('canvas');
+                    const w = imgEl.naturalWidth || imgEl.width;
+                    const h = imgEl.naturalHeight || imgEl.height;
+                    finalCanvas.width = w;
+                    finalCanvas.height = h;
+                    const ctx = finalCanvas.getContext('2d');
+                    
+                    const warpedImg = new Image();
+                    warpedImg.onload = function() {
+                        ctx.drawImage(warpedImg, 0, 0, w, h);
+                        
+                        // Add shadow for depth
+                        ctx.globalCompositeOperation = 'multiply';
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+                        ctx.fillRect(0, 0, w, h);
+                        
+                        // Add highlight
+                        ctx.globalCompositeOperation = 'screen';
+                        const grad = ctx.createRadialGradient(w * 0.4, h * 0.35, 0, w * 0.5, h * 0.5, Math.max(w, h) * 0.7);
+                        grad.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
+                        grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0, 0, w, h);
+                        
+                        // Replace object
+                        fabric.Image.fromURL(finalCanvas.toDataURL(), function(finalImg) {
+                            finalImg.set({
+                                left: obj.left,
+                                top: obj.top,
+                                scaleX: obj.scaleX,
+                                scaleY: obj.scaleY,
+                                angle: obj.angle,
+                                name: 'texture',
+                                cornerStyle: 'circle',
+                                cornerColor: '#4ecdc4',
+                                borderColor: '#4ecdc4',
+                                cornerSize: 12
+                            });
+                            
+                            canvas.remove(obj);
+                            canvas.add(finalImg);
+                            canvas.setActiveObject(finalImg);
+                            canvas.renderAll();
+                            saveToHistory();
+                            resolve();
+                        });
+                    };
+                    warpedImg.src = warpedUrl;
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        }
+
+        // ========== TOOL SWITCHING ==========
+        function setToolMode(mode) {
+            if (currentToolMode === 'lasso') {
+                cleanupLasso();
+            }
+            
+            currentToolMode = mode;
+            updateToolButtons();
+            
+            if (mode === 'lasso') {
+                activateLassoMode();
+            } else if (mode === 'hand') {
+                canvas.selection = false;
+                canvas.defaultCursor = 'grab';
+                updateStatus('Chế độ Pan - Kéo để di chuyển canvas');
+            } else {
+                canvas.selection = true;
+                canvas.defaultCursor = 'default';
+                updateStatus('Chế độ Select - Chọn và chỉnh sửa đối tượng');
+            }
+        }
+
+        function updateToolButtons() {
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('active-tool');
+            });
+            
+            const activeBtn = {
+                'select': 'transformBtn',
+                'hand': 'handToolBtn',
+                'lasso': 'lassoBtn'
+            }[currentToolMode];
+            
+            if (activeBtn) {
+                document.getElementById(activeBtn).classList.add('active-tool');
+            }
+        }
+
+        // ========== UPLOAD FUNCTIONS ==========
+        document.getElementById('uploadMockupBtn').addEventListener('click', () => {
+            document.getElementById('mockupFile').click();
+        });
+
+        document.getElementById('mockupFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                if (mockupImage) canvas.remove(mockupImage);
+                
+                fabric.Image.fromURL(event.target.result, function(img) {
+                    mockupImage = img;
+                    img.set({
+                        selectable: false,
+                        evented: false,
+                        name: 'mockup_bg'
+                    });
+                    
+                    const scale = Math.min(canvas.width / img.width, canvas.height / img.height) * 0.9;
+                    img.scale(scale);
+                    img.set({
+                        left: (canvas.width - img.width * scale) / 2,
+                        top: (canvas.height - img.height * scale) / 2
+                    });
+                    
+                    canvas.add(img);
+                    canvas.sendToBack(img);
+                    canvas.renderAll();
+                    saveToHistory();
+                    updateStatus('Mockup đã được tải lên!');
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('uploadTextureBtn').addEventListener('click', () => {
+            document.getElementById('textureFiles').click();
+        });
+
+        document.getElementById('textureFiles').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            const container = document.getElementById('textureThumbnails');
+            
+            files.forEach((file, idx) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const textureData = {
+                        id: Date.now() + idx,
+                        url: event.target.result,
+                        name: file.name
+                    };
+                    textures.push(textureData);
+                    
+                    const thumb = document.createElement('img');
+                    thumb.src = event.target.result;
+                    thumb.className = 'thumbnail';
+                    thumb.draggable = true;
+                    thumb.dataset.index = textures.length - 1;
+                    
+                    thumb.addEventListener('dragstart', function(e) {
+                        e.dataTransfer.setData('textureIndex', this.dataset.index);
+                    });
+                    
+                    container.appendChild(thumb);
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            updateStatus(`Đã tải ${files.length} vật liệu`);
+        });
+
+        canvas.on('drop', function(event) {
+            event.e.preventDefault();
+            
+            const idx = parseInt(event.e.dataTransfer.getData('textureIndex'));
+            if (isNaN(idx) || !textures[idx]) return;
+            
+            const texture = textures[idx];
+            
+            fabric.Image.fromURL(texture.url, function(img) {
+                const scale = 250 / Math.max(img.width, img.height);
+                
+                img.set({
+                    left: event.e.offsetX - (img.width * scale) / 2,
+                    top: event.e.offsetY - (img.height * scale) / 2,
+                    scaleX: scale,
+                    scaleY: scale,
+                    cornerStyle: 'circle',
+                    cornerColor: '#4ecdc4',
+                    borderColor: '#4ecdc4',
+                    cornerSize: 12,
+                    name: 'texture'
+                });
+                
+                canvas.add(img);
+                canvas.setActiveObject(img);
+                canvas.renderAll();
+                saveToHistory();
+                updateStatus(`Đã thêm "${texture.name}"`);
+            });
+        });
+
+        canvas.on('dragover', (e) => e.e.preventDefault());
+
+        // ========== OTHER TOOLS ==========
+        document.getElementById('fitSurfaceBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj || !mockupImage) {
+                updateStatus('Cần có mockup và vật liệu');
+                return;
+            }
+            
+            const mockupBounds = mockupImage.getBoundingRect();
+            const fitScale = 0.85;
+            
+            const targetW = mockupBounds.width * fitScale;
+            const targetH = mockupBounds.height * fitScale;
+            
+            const scale = Math.min(targetW / activeObj.width, targetH / activeObj.height);
+            
+            activeObj.set({
+                scaleX: scale,
+                scaleY: scale,
+                left: mockupBounds.left + (mockupBounds.width - activeObj.width * scale) / 2,
+                top: mockupBounds.top + (mockupBounds.height - activeObj.height * scale) / 2,
+                angle: 0
+            });
+            
+            activeObj.setCoords();
+            canvas.renderAll();
+            saveToHistory();
+            updateStatus('Đã fit vào bề mặt mockup');
+        });
+
+        document.getElementById('removeBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && activeObj !== mockupImage) {
+                canvas.remove(activeObj);
+                canvas.renderAll();
+                saveToHistory();
+                updateStatus('Đã xóa đối tượng');
+            }
+        });
+
+        document.getElementById('bringFrontBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                activeObj.bringToFront();
+                canvas.renderAll();
+                saveToHistory();
+            }
+        });
+
+        document.getElementById('sendBackBtn').addEventListener('click', function() {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && activeObj !== mockupImage) {
+                activeObj.sendToBack();
+                if (mockupImage) mockupImage.sendToBack();
+                canvas.renderAll();
+                saveToHistory();
+            }
+        });
+
+        // ========== ZOOM & PAN ==========
+        let isPanning = false;
+
+        canvas.on('mouse:down', function(opt) {
+            const evt = opt.e;
+            if (currentToolMode === 'hand' || evt.ctrlKey) {
+                isPanning = true;
+                canvas.selection = false;
+                canvas.lastPosX = evt.clientX;
+                canvas.lastPosY = evt.clientY;
+                canvas.defaultCursor = 'grabbing';
+            }
+        });
+
+        canvas.on('mouse:move', function(opt) {
+            if (isPanning) {
+                const evt = opt.e;
+                const vpt = canvas.viewportTransform;
+                vpt[4] += evt.clientX - canvas.lastPosX;
+                vpt[5] += evt.clientY - canvas.lastPosY;
+                canvas.requestRenderAll();
+                canvas.lastPosX = evt.clientX;
+                canvas.lastPosY = evt.clientY;
+            }
+        });
+
+        canvas.on('mouse:up', function() {
+            isPanning = false;
+            if (currentToolMode === 'select') {
+                canvas.selection = true;
+                canvas.defaultCursor = 'default';
+            } else if (currentToolMode === 'hand') {
+                canvas.defaultCursor = 'grab';
+            }
+        });
+
+        canvas.on('mouse:wheel', function(opt) {
+            const delta = opt.e.deltaY;
+            let zoom = canvas.getZoom();
+            zoom *= 0.999 ** delta;
+            zoom = Math.min(5, Math.max(0.1, zoom));
+            canvas.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, zoom);
+            zoomLevel = zoom;
+            updateZoomDisplay();
+            opt.e.preventDefault();
+            opt.e.stopPropagation();
+        });
+
+        function updateZoomDisplay() {
+            const percent = Math.round(zoomLevel * 100);
+            document.getElementById('zoomLevel').textContent = percent + '%';
+            document.getElementById('zoomStatus').textContent = percent + '%';
+        }
+
+        document.getElementById('zoomInCanvas').addEventListener('click', () => {
+            zoomLevel = Math.min(5, zoomLevel * 1.2);
+            canvas.setZoom(zoomLevel);
+            updateZoomDisplay();
+        });
+
+        document.getElementById('zoomOutCanvas').addEventListener('click', () => {
+            zoomLevel = Math.max(0.1, zoomLevel * 0.8);
+            canvas.setZoom(zoomLevel);
+            updateZoomDisplay();
+        });
+
+        document.getElementById('zoomResetCanvas').addEventListener('click', () => {
+            canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+            zoomLevel = 1;
+            canvas.setZoom(1);
+            updateZoomDisplay();
+        });
+
+        // ========== SAVE/EXPORT ==========
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            document.getElementById('saveOverlay').classList.add('active');
+        });
+
+        document.getElementById('cancelSave').addEventListener('click', () => {
+            document.getElementById('saveOverlay').classList.remove('active');
+        });
+
+        document.getElementById('confirmSave').addEventListener('click', function() {
+            const format = document.getElementById('exportFormat').value;
+            const fileName = document.getElementById('exportFileName').value || 'mockup_k_pro';
+            
+            canvas.discardActiveObject();
+            canvas.renderAll();
+            
+            const dataURL = canvas.toDataURL({
+                format: format,
+                quality: 0.95
+            });
