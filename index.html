@@ -666,30 +666,23 @@
         }
 
         /* Lasso tool styles */
-        .lasso-point {
+        .lasso-overlay {
             position: absolute;
-            width: 6px;
-            height: 6px;
-            background: #ff0000;
-            border-radius: 50%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             z-index: 100;
             pointer-events: none;
         }
         
-        .lasso-line {
+        .lasso-canvas {
             position: absolute;
-            background: #ff0000;
-            height: 2px;
-            z-index: 99;
-            pointer-events: none;
-        }
-        
-        .lasso-preview {
-            position: absolute;
-            background: rgba(255, 0, 0, 0.2);
-            border: 2px solid #ff0000;
-            z-index: 98;
-            pointer-events: none;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 101;
         }
 
     </style>
@@ -813,6 +806,9 @@
         <div class="canvas-area">
             <div class="canvas-container">
                 <canvas id="main-canvas"></canvas>
+                <div class="lasso-overlay" id="lassoOverlay" style="display: none;">
+                    <canvas id="lassoCanvas" class="lasso-canvas"></canvas>
+                </div>
                 
                 <div class="drawing-controls" id="drawingControls" style="display: none;">
                     <div class="drawing-control">
@@ -863,7 +859,7 @@
                 </div>
                 <div class="canvas-info-item">
                     <i class="fas fa-cut"></i>
-                    <span>Nhấn <strong>L</strong> để dùng Laso Tool, vẽ vùng và double-click để kết thúc</span>
+                    <span>Nhấn <strong>L</strong> để dùng Laso Tool, vẽ vùng và nhấn <strong>Enter</strong> để kết thúc</span>
                 </div>
                 <div class="canvas-info-item">
                     <i class="fas fa-check-circle"></i>
@@ -1051,6 +1047,19 @@
             const container = document.querySelector('.canvas-container');
             canvas.setWidth(container.clientWidth);
             canvas.setHeight(container.clientHeight);
+            
+            // Cập nhật kích thước cho lasso canvas
+            const lassoCanvas = document.getElementById('lassoCanvas');
+            const lassoOverlay = document.getElementById('lassoOverlay');
+            if (lassoCanvas) {
+                lassoCanvas.width = container.clientWidth;
+                lassoCanvas.height = container.clientHeight;
+            }
+            if (lassoOverlay) {
+                lassoOverlay.style.width = container.clientWidth + 'px';
+                lassoOverlay.style.height = container.clientHeight + 'px';
+            }
+            
             canvas.renderAll();
         }
         window.addEventListener('resize', resizeCanvas);
@@ -1072,7 +1081,8 @@
         // ========== BIẾN CHO CÔNG CỤ LASO CẢI TIẾN ==========
         let isLassoMode = false;
         let lassoPoints = [];
-        let lassoPath = null;
+        let lassoCanvas = null;
+        let lassoCtx = null;
         let isDrawingLasso = false;
         let originalSelectionState = true;
         
@@ -1197,123 +1207,109 @@
             isDrawingLasso = false;
             lassoPoints = [];
             
-            // QUAN TRỌNG: Tắt selection và event handling của Fabric.js
+            // Lưu trạng thái canvas ban đầu
             originalSelectionState = canvas.selection;
             canvas.selection = false;
             canvas.defaultCursor = 'crosshair';
-            canvas.hoverCursor = 'crosshair';
             
-            // Vô hiệu hóa tất cả các đối tượng để không bị kéo
-            canvas.getObjects().forEach(obj => {
-                if (obj.name === 'texture') {
-                    obj.selectable = false;
-                    obj.evented = false;
-                }
-            });
+            // Khởi tạo canvas lasso
+            const lassoOverlay = document.getElementById('lassoOverlay');
+            lassoCanvas = document.getElementById('lassoCanvas');
+            
+            if (!lassoCanvas) {
+                lassoCanvas = document.createElement('canvas');
+                lassoCanvas.id = 'lassoCanvas';
+                lassoCanvas.className = 'lasso-canvas';
+                lassoOverlay.appendChild(lassoCanvas);
+            }
+            
+            lassoCanvas.width = canvas.width;
+            lassoCanvas.height = canvas.height;
+            lassoCtx = lassoCanvas.getContext('2d');
+            
+            // Hiển thị overlay
+            lassoOverlay.style.display = 'block';
+            lassoOverlay.style.pointerEvents = 'auto';
             
             updateToolButtons();
-            updateStatus('Laso Tool: Click và kéo để vẽ vùng chọn, Double-click để kết thúc');
+            updateStatus('Laso Tool: Vẽ vùng chọn bằng cách kéo chuột, nhấn Enter để hoàn thành');
         }
 
         function startLassoDrawing(event) {
             if (!isLassoMode) return;
             
-            // QUAN TRỌNG: Ngăn chặn Fabric.js xử lý sự kiện mặc định
-            event.e.preventDefault();
-            event.e.stopPropagation();
+            // Ngăn chặn hành vi mặc định
+            event.preventDefault();
+            event.stopPropagation();
             
             isDrawingLasso = true;
-            const pointer = canvas.getPointer(event.e);
             
-            lassoPoints = [{x: pointer.x, y: pointer.y}];
+            // Lấy tọa độ chuột
+            const rect = canvas.getElement().getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
             
-            // Tạo path mới với đường cong mượt
-            lassoPath = new fabric.Path(`M ${pointer.x} ${pointer.y}`, {
-                fill: 'rgba(255, 0, 0, 0.2)',
-                stroke: '#ff0000',
-                strokeWidth: 2,
-                strokeLineCap: 'round',
-                strokeLineJoin: 'round',
-                selectable: false,
-                evented: false,
-                objectCaching: false
-            });
+            lassoPoints = [{x, y}];
             
-            canvas.add(lassoPath);
-            canvas.renderAll();
+            // Bắt đầu vẽ trên lasso canvas
+            lassoCtx.clearRect(0, 0, lassoCanvas.width, lassoCanvas.height);
+            lassoCtx.beginPath();
+            lassoCtx.moveTo(x, y);
+            lassoCtx.strokeStyle = '#ff0000';
+            lassoCtx.lineWidth = 2;
+            lassoCtx.lineJoin = 'round';
+            lassoCtx.lineCap = 'round';
         }
 
         function continueLassoDrawing(event) {
             if (!isLassoMode || !isDrawingLasso) return;
             
-            // Ngăn chặn sự kiện mặc định
-            event.e.preventDefault();
-            event.e.stopPropagation();
+            event.preventDefault();
+            event.stopPropagation();
             
-            const pointer = canvas.getPointer(event.e);
-            lassoPoints.push({x: pointer.x, y: pointer.y});
+            const rect = canvas.getElement().getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
             
-            // Cập nhật path với đường cong mượt
-            if (lassoPoints.length >= 2) {
-                let pathString = `M ${lassoPoints[0].x} ${lassoPoints[0].y}`;
-                
-                // Tạo đường cong quadratic để mượt hơn
-                for (let i = 1; i < lassoPoints.length; i++) {
-                    const prevPoint = lassoPoints[i-1];
-                    const currentPoint = lassoPoints[i];
-                    
-                    // Sử dụng đường thẳng đơn giản trước, sau đó có thể chuyển sang đường cong
-                    pathString += ` L ${currentPoint.x} ${currentPoint.y}`;
-                }
-                
-                lassoPath.set({ path: pathString });
-                canvas.renderAll();
-            }
+            lassoPoints.push({x, y});
+            
+            // Vẽ đường trên lasso canvas
+            lassoCtx.lineTo(x, y);
+            lassoCtx.stroke();
         }
 
         function endLassoDrawing(event) {
             if (!isLassoMode || !isDrawingLasso) return;
             
-            event.e.preventDefault();
-            event.e.stopPropagation();
-            
-            if (event.e.type === 'mouseup') {
-                // Kiểm tra nếu double-click
-                const now = Date.now();
-                if (lassoPath.lastClickTime && now - lassoPath.lastClickTime < 300) {
-                    finishLassoSelection();
-                } else {
-                    lassoPath.lastClickTime = now;
-                }
-            }
+            event.preventDefault();
+            event.stopPropagation();
         }
 
         function finishLassoSelection() {
-            if (lassoPoints.length < 3) {
-                cleanupLasso();
-                updateStatus('Vùng chọn quá nhỏ. Vui lòng vẽ vùng lớn hơn.');
+            if (!isLassoMode || lassoPoints.length < 3) {
+                updateStatus('Vui lòng vẽ vùng chọn với ít nhất 3 điểm');
                 return;
             }
             
-            // Đóng path bằng cách nối điểm cuối với điểm đầu
-            const firstPoint = lassoPoints[0];
+            // Đóng đường vẽ
+            lassoCtx.beginPath();
+            lassoCtx.moveTo(lassoPoints[0].x, lassoPoints[0].y);
             
-            let pathString = lassoPath.path.join(' ');
-            pathString += ` L ${firstPoint.x} ${firstPoint.y} Z`;
+            for (let i = 1; i < lassoPoints.length; i++) {
+                lassoCtx.lineTo(lassoPoints[i].x, lassoPoints[i].y);
+            }
             
-            lassoPath.set({ 
-                path: pathString,
-                fill: 'rgba(255, 0, 0, 0.3)'
-            });
+            lassoCtx.closePath();
+            lassoCtx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            lassoCtx.fill();
+            lassoCtx.stroke();
             
-            canvas.renderAll();
             isDrawingLasso = false;
-            
             updateStatus('Đã tạo vùng chọn. Nhấn Delete để xóa phần bên trong vùng này.');
         }
 
         function deleteLassoArea() {
-            if (!isLassoMode || !lassoPath || lassoPoints.length < 3) {
+            if (!isLassoMode || lassoPoints.length < 3) {
                 updateStatus('Vui lòng tạo vùng chọn trước khi xóa');
                 return;
             }
@@ -1399,10 +1395,15 @@
         }
 
         function cleanupLasso() {
-            if (lassoPath) {
-                canvas.remove(lassoPath);
-                lassoPath = null;
+            // Xóa canvas lasso
+            if (lassoCtx) {
+                lassoCtx.clearRect(0, 0, lassoCanvas.width, lassoCanvas.height);
             }
+            
+            // Ẩn overlay
+            const lassoOverlay = document.getElementById('lassoOverlay');
+            lassoOverlay.style.display = 'none';
+            lassoOverlay.style.pointerEvents = 'none';
             
             lassoPoints = [];
             isDrawingLasso = false;
@@ -1410,15 +1411,6 @@
             // Khôi phục lại trạng thái canvas
             canvas.selection = originalSelectionState;
             canvas.defaultCursor = 'default';
-            canvas.hoverCursor = 'move';
-            
-            // Kích hoạt lại các đối tượng texture
-            canvas.getObjects().forEach(obj => {
-                if (obj.name === 'texture') {
-                    obj.selectable = true;
-                    obj.evented = true;
-                }
-            });
             
             canvas.renderAll();
         }
@@ -1574,9 +1566,9 @@
             } else if (currentToolMode === 'lasso') {
                 cleanupLasso();
                 // Xóa các event listener cũ
-                canvas.off('mouse:down', lassoMouseDownHandler);
-                canvas.off('mouse:move', lassoMouseMoveHandler);
-                canvas.off('mouse:up', lassoMouseUpHandler);
+                document.removeEventListener('mousedown', handleLassoMouseDown);
+                document.removeEventListener('mousemove', handleLassoMouseMove);
+                document.removeEventListener('mouseup', handleLassoMouseUp);
             }
             
             currentToolMode = mode;
@@ -1590,14 +1582,10 @@
                 document.getElementById('lassoBtn').classList.add('active-tool');
                 activateLassoMode();
                 
-                // Sử dụng hàm xử lý riêng để có thể remove sau
-                lassoMouseDownHandler = function(opt) { startLassoDrawing(opt); };
-                lassoMouseMoveHandler = function(opt) { continueLassoDrawing(opt); };
-                lassoMouseUpHandler = function(opt) { endLassoDrawing(opt); };
-                
-                canvas.on('mouse:down', lassoMouseDownHandler);
-                canvas.on('mouse:move', lassoMouseMoveHandler);
-                canvas.on('mouse:up', lassoMouseUpHandler);
+                // Thêm event listeners trực tiếp vào document
+                document.addEventListener('mousedown', handleLassoMouseDown);
+                document.addEventListener('mousemove', handleLassoMouseMove);
+                document.addEventListener('mouseup', handleLassoMouseUp);
             } 
             else if (mode === 'hand') {
                 document.getElementById('handToolBtn').classList.add('active-tool');
@@ -1621,10 +1609,24 @@
             canvas.renderAll();
         }
 
-        // Khai báo các handler cho laso
-        let lassoMouseDownHandler = null;
-        let lassoMouseMoveHandler = null;
-        let lassoMouseUpHandler = null;
+        // Event handlers cho lasso
+        function handleLassoMouseDown(e) {
+            if (isLassoMode) {
+                startLassoDrawing(e);
+            }
+        }
+
+        function handleLassoMouseMove(e) {
+            if (isLassoMode && isDrawingLasso) {
+                continueLassoDrawing(e);
+            }
+        }
+
+        function handleLassoMouseUp(e) {
+            if (isLassoMode && isDrawingLasso) {
+                endLassoDrawing(e);
+            }
+        }
 
         document.getElementById('handToolBtn').addEventListener('click', () => setToolMode('hand'));
         document.getElementById('transformBtn').addEventListener('click', () => setToolMode('select'));
@@ -2010,7 +2012,7 @@
 
         // ========== CÁC CÔNG CỤ KHÁC ==========
         document.getElementById('removeBtn').addEventListener('click', function() {
-            if (currentToolMode === 'lasso' && lassoPath) {
+            if (currentToolMode === 'lasso' && lassoPoints.length >= 3) {
                 deleteLassoArea();
             } else {
                 const activeObj = canvas.getActiveObject();
@@ -2100,9 +2102,12 @@
             } else if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) { 
                 e.preventDefault(); 
                 document.getElementById('redoBtn').click(); 
+            } else if (e.key === 'Enter' && currentToolMode === 'lasso') {
+                e.preventDefault();
+                finishLassoSelection();
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
                 e.preventDefault(); 
-                if (currentToolMode === 'lasso' && lassoPath) {
+                if (currentToolMode === 'lasso' && lassoPoints.length >= 3) {
                     deleteLassoArea();
                 } else {
                     document.getElementById('removeBtn').click(); 
